@@ -21,6 +21,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "mmc_cmds.h"
+
 #define MMC_VERSION	"0.1"
 
 #define BASIC_HELP 0
@@ -48,6 +50,16 @@ static struct Command commands[] = {
 	/*
 	 *	avoid short commands different for the case only
 	 */
+	{ do_read_extcsd, -1,
+	  "extcsd read", "<device>\n"
+		"Print extcsd data from <device>.",
+	  NULL
+	},
+	{ do_write_extcsd, -1,
+	  "extcsd write", "<device>\n"
+		"Write extcsd data to <device>.",
+	  NULL
+	},
 	{ 0, 0, 0, 0 }
 };
 
