@@ -25,7 +25,6 @@
 #include <fcntl.h>
 #include <libgen.h>
 #include <limits.h>
-#include <uuid/uuid.h>
 #include <ctype.h>
 
 #include "mmc.h"
