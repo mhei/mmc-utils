@@ -72,6 +72,102 @@ int write_extcsd_value(int fd, __u8 index, __u8 value)
 	return ret;
 }
 
+void print_writeprotect_status(__u8 *ext_csd)
+{
+	__u8 reg;
+	__u8 ext_csd_rev = ext_csd[192];
+
+	/* A43: reserved [174:0] */
+	if (ext_csd_rev >= 5) {
+		printf("Boot write protection status registers"
+			" [BOOT_WP_STATUS]: 0x%02x\n", ext_csd[174]);
+
+		reg = ext_csd[EXT_CSD_BOOT_WP];
+		printf("Boot Area Write protection [BOOT_WP]: 0x%02x\n", reg);
+		printf(" Power ro locking: ");
+		if (reg & EXT_CSD_BOOT_WP_B_PWR_WP_DIS)
+			printf("not possible\n");
+		else
+			printf("possible\n");
+
+		printf(" Permanent ro locking: ");
+		if (reg & EXT_CSD_BOOT_WP_B_PERM_WP_DIS)
+			printf("not possible\n");
+		else
+			printf("possible\n");
+
+		printf(" ro lock status: ");
+		if (reg & EXT_CSD_BOOT_WP_B_PWR_WP_EN)
+			printf("locked until next power on\n");
+		else if (reg & EXT_CSD_BOOT_WP_B_PERM_WP_EN)
+			printf("locked permanently\n");
+		else
+			printf("not locked\n");
+	}
+}
+
+int do_writeprotect_get(int nargs, char **argv)
+{
+	__u8 ext_csd[512];
+	int fd, ret;
+	char *device;
+
+	CHECK(nargs != 2, "Usage: mmc </path/to/mmcblkX>\n", exit(1));
+
+	device = argv[1];
+
+	fd = open(device, O_RDWR);
+	if (fd < 0) {
+		perror("open");
+		exit(1);
+	}
+
+	ret = read_extcsd(fd, ext_csd);
+	if (ret) {
+		fprintf(stderr, "Could not read EXT_CSD from %s\n", device);
+		exit(1);
+	}
+
+	print_writeprotect_status(ext_csd);
+
+	return ret;
+}
+
+int do_writeprotect_set(int nargs, char **argv)
+{
+	__u8 ext_csd[512], value;
+	int fd, ret;
+	char *device;
+
+	CHECK(nargs != 2, "Usage: mmc </path/to/mmcblkX>\n", exit(1));
+
+	device = argv[1];
+
+	fd = open(device, O_RDWR);
+	if (fd < 0) {
+		perror("open");
+		exit(1);
+	}
+
+	ret = read_extcsd(fd, ext_csd);
+	if (ret) {
+		fprintf(stderr, "Could not read EXT_CSD from %s\n", device);
+		exit(1);
+	}
+
+	value = ext_csd[EXT_CSD_BOOT_WP] |
+		EXT_CSD_BOOT_WP_B_PWR_WP_EN;
+	ret = write_extcsd_value(fd, EXT_CSD_BOOT_WP, value);
+	if (ret) {
+		fprintf(stderr, "Could not write 0x%02x to "
+			"EXT_CSD[%d] in %s\n",
+			value, EXT_CSD_BOOT_WP, device);
+		exit(1);
+	}
+
+	return ret;
+}
+
 int do_read_extcsd(int nargs, char **argv)
 {
 	__u8 ext_csd[512], ext_csd_rev, reg;
@@ -133,13 +229,13 @@ int do_read_extcsd(int nargs, char **argv)
 	reg = ext_csd[EXT_CSD_S_CMD_SET];
 	printf("Card Supported Command sets [S_CMD_SET: 0x%02x]\n", reg);
 	if (!reg)
-		printf(" - Standard MMC coomand sets\n");
+		printf(" - Standard MMC command sets\n");
 
 	reg = ext_csd[EXT_CSD_HPI_FEATURE];
 	printf("HPI Features [HPI_FEATURE: 0x%02x]: ", reg);
 	if (reg & EXT_CSD_HPI_SUPP) {
 		if (reg & EXT_CSD_HPI_IMPL)
-			printf("implementationbased on CMD12\n");
+			printf("implementation based on CMD12\n");
 		else
 			printf("implementation based on CMD13\n");
 	}
@@ -177,9 +273,8 @@ int do_read_extcsd(int nargs, char **argv)
 	/* A441: Reserved [501:247]
 	    A43: reserved [246:229] */
 	if (ext_csd_rev >= 5) {
-
 		printf("Background operations status"
-			"[BKOPS_STATUS: 0x%02x]\n", ext_csd[246]);
+			" [BKOPS_STATUS: 0x%02x]\n", ext_csd[246]);
 
 		/* CORRECTLY_PRG_SECTORS_NUM [245:242] TODO */
 
@@ -187,7 +282,6 @@ int do_read_extcsd(int nargs, char **argv)
 			" [INI_TIMEOUT_AP: 0x%02x]\n", ext_csd[241]);
 
 		/* A441: reserved [240] */
-
 		printf("Power class for 52MHz, DDR at 3.6V"
 			" [PWR_CL_DDR_52_360: 0x%02x]\n", ext_csd[239]);
 		printf("Power class for 52MHz, DDR at 1.95V"
@@ -201,7 +295,7 @@ int do_read_extcsd(int nargs, char **argv)
 			printf("Power class for 200MHz, at 1.95V"
 				" [PWR_CL_200_195: 0x%02x]\n", ext_csd[236]);
 		}
-		printf("Minimum Performances for 8bit at 52MHz in DDR mode:\n");
+		printf("Minimum Performance for 8bit at 52MHz in DDR mode:\n");
 		printf(" [MIN_PERF_DDR_W_8_52: 0x%02x]\n", ext_csd[235]);
 		printf(" [MIN_PERF_DDR_R_8_52: 0x%02x]\n", ext_csd[234]);
 		/* A441: reserved [233] */
@@ -346,34 +440,9 @@ int do_read_extcsd(int nargs, char **argv)
 	printf("High-density erase group definition"
 		" [ERASE_GROUP_DEF: 0x%02x]\n", ext_csd[175]);
 
-	/* A43: reserved [174:0] */
+	print_writeprotect_status(ext_csd);
+
 	if (ext_csd_rev >= 5) {
-		printf("Boot write protection status registers"
-			" [BOOT_WP_STATUS]: 0x%02x\n", ext_csd[174]);
-
-		reg = ext_csd[EXT_CSD_BOOT_WP];
-		printf("Boot Area Write protection [BOOT_WP]: 0x%02x\n", reg);
-		printf(" Power ro locking: ");
-		if (reg & EXT_CSD_BOOT_WP_B_PWR_WP_DIS)
-			printf("not possible\n");
-		else
-			printf("possible\n");
-
-		printf(" Permanent ro locking: ");
-		if (reg & EXT_CSD_BOOT_WP_B_PERM_WP_DIS)
-			printf("not possible\n");
-		else
-			printf("possible\n");
-
-		printf(" ro lock status: ");
-		if (reg & EXT_CSD_BOOT_WP_B_PWR_WP_EN)
-			printf("locked until next power on\n");
-		else if (reg &
-			 EXT_CSD_BOOT_WP_B_PERM_WP_EN)
-			printf("locked permanently\n");
-		else
-			printf("not locked\n");
-
 		/* A441]: reserved [172] */
 		printf("User area write protection register"
 			" [USER_WP]: 0x%02x\n", ext_csd[171]);
@@ -480,51 +549,11 @@ int do_read_extcsd(int nargs, char **argv)
 			" [PACKED_FAILURE_INDEX]: 0x%02x\n", ext_csd[35]);
 		printf("Power Off Notification"
 			" [POWER_OFF_NOTIFICATION]: 0x%02x\n", ext_csd[34]);
-		printf("Control to turn the Cache ON/OFF"
-			" [CACHE_CTRL]: 0x%02x\n", ext_csd[33]);
+		printf("Control to turn the Cache ON/OFF"			" [CACHE_CTRL]: 0x%02x\n", ext_csd[33]);
 		/* flush_cache ext_csd[32] not readable */
 		/*Reserved [31:0] */
 	}
 
 out_free:
-
-	return ret;
-}
-
-int do_write_extcsd(int nargs, char **argv)
-{
-	__u8 ext_csd[512], value;
-	int fd, ret;
-	char *device;
-
-	if (nargs != 2) {
-		fprintf (stderr, "Usage: %s </path/to/mmcblkX>\n",
-								argv[0]);
-		exit (1);
-	}
-	device = argv[1];
-
-	fd = open(device, O_RDWR);
-	if (fd < 0) {
-		perror("open");
-		exit(1);
-	}
-
-	ret = read_extcsd(fd, ext_csd);
-	if (ret) {
-		fprintf(stderr, "Could not read EXT_CSD from %s\n", device);
-		exit(1);
-	}
-
-	value = ext_csd[EXT_CSD_BOOT_WP] |
-		EXT_CSD_BOOT_WP_B_PWR_WP_EN;
-	ret = write_extcsd_value(fd, EXT_CSD_BOOT_WP, value);
-	if (ret) {
-		fprintf(stderr, "Could not write 0x%02x to "
-			"EXT_CSD[%d] in %s\n",
-			value, EXT_CSD_BOOT_WP, device);
-		exit(1);
-	}
-
 	return ret;
 }
