@@ -29,17 +29,29 @@
 /*
  * EXT_CSD fields
  */
-#define EXT_CSD_BOOT_WP			173	/* R/W */
-#define EXT_CSD_PART_SWITCH_TIME	199	/* RO */
+#define EXT_CSD_S_CMD_SET		504
+#define EXT_CSD_HPI_FEATURE		503
+#define EXT_CSD_BOOT_INFO		228	/* R/W */
+#define EXT_CSD_PART_SWITCH_TIME	199
+#define EXT_CSD_BOOT_CFG		179
+#define EXT_CSD_BOOT_WP			173
 
 /*
  * EXT_CSD field definitions
  */
+#define EXT_CSD_HPI_SUPP		(1<<0)
+#define EXT_CSD_HPI_IMPL		(1<<1)
 #define EXT_CSD_CMD_SET_NORMAL		(1<<0)
 #define EXT_CSD_BOOT_WP_B_PWR_WP_DIS	(0x40)
 #define EXT_CSD_BOOT_WP_B_PERM_WP_DIS	(0x10)
 #define EXT_CSD_BOOT_WP_B_PERM_WP_EN	(0x04)
 #define EXT_CSD_BOOT_WP_B_PWR_WP_EN	(0x01)
+#define EXT_CSD_BOOT_INFO_HS_MODE	(1<<2)
+#define EXT_CSD_BOOT_INFO_DDR_DDR	(1<<1)
+#define EXT_CSD_BOOT_INFO_ALT		(1<<0)
+#define EXT_CSD_BOOT_CFG_ACK		(1<<6)
+#define EXT_CSD_BOOT_CFG_EN		(0x38)
+#define EXT_CSD_BOOT_CFG_ACC		(0x03)
 
 /* From kernel linux/mmc/core.h */
 #define MMC_RSP_PRESENT	(1 << 0)
