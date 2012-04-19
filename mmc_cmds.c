@@ -112,7 +112,8 @@ int do_writeprotect_get(int nargs, char **argv)
 	int fd, ret;
 	char *device;
 
-	CHECK(nargs != 2, "Usage: mmc </path/to/mmcblkX>\n", exit(1));
+	CHECK(nargs != 2, "Usage: mmc writeprotect get </path/to/mmcblkX>\n",
+			  exit(1));
 
 	device = argv[1];
 
@@ -139,7 +140,8 @@ int do_writeprotect_set(int nargs, char **argv)
 	int fd, ret;
 	char *device;
 
-	CHECK(nargs != 2, "Usage: mmc </path/to/mmcblkX>\n", exit(1));
+	CHECK(nargs != 2, "Usage: mmc writeprotect set </path/to/mmcblkX>\n",
+			  exit(1));
 
 	device = argv[1];
 
@@ -242,7 +244,8 @@ int do_read_extcsd(int nargs, char **argv)
 	char *device;
 	const char *str;
 
-	CHECK(nargs != 2, "Usage: mmc </path/to/mmcblkX>\n", exit(1));
+	CHECK(nargs != 2, "Usage: mmc extcsd read </path/to/mmcblkX>\n",
+			  exit(1));
 
 	device = argv[1];
 
