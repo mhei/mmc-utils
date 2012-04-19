@@ -19,3 +19,4 @@ int do_read_extcsd(int nargs, char **argv);
 int do_write_extcsd(int nargs, char **argv);
 int do_writeprotect_get(int nargs, char **argv);
 int do_writeprotect_set(int nargs, char **argv);
+int do_write_boot_en(int nargs, char **argv);

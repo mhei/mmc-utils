@@ -168,6 +168,73 @@ int do_writeprotect_set(int nargs, char **argv)
 	return ret;
 }
 
+int do_write_boot_en(int nargs, char **argv)
+{
+	__u8 ext_csd[512];
+	__u8 value = 0;
+	int fd, ret;
+	char *device;
+	int boot_area, send_ack;
+
+	CHECK(nargs != 4, "Usage: mmc bootpart enable <partition_number> "
+			  "<send_ack> </path/to/mmcblkX>\n", exit(1));
+
+	/*
+	 * If <send_ack> is 1, the device will send acknowledgment
+	 * pattern "010" to the host when boot operation begins.
+	 * If <send_ack> is 0, it won't.
+	 */
+	boot_area = strtol(argv[1], NULL, 10);
+	send_ack = strtol(argv[2], NULL, 10);
+	device = argv[3];
+
+	fd = open(device, O_RDWR);
+	if (fd < 0) {
+		perror("open");
+		exit(1);
+	}
+
+	ret = read_extcsd(fd, ext_csd);
+	if (ret) {
+		fprintf(stderr, "Could not read EXT_CSD from %s\n", device);
+		exit(1);
+	}
+
+	value = ext_csd[EXT_CSD_PART_CONFIG];
+
+	switch (boot_area) {
+	case EXT_CSD_PART_CONFIG_ACC_BOOT0:
+		value |= (1 << 3);
+		value &= ~(3 << 4);
+		break;
+	case EXT_CSD_PART_CONFIG_ACC_BOOT1:
+		value |= (1 << 4);
+		value &= ~(1 << 3);
+		value &= ~(1 << 5);
+		break;
+	case EXT_CSD_PART_CONFIG_ACC_USER_AREA:
+		value |= (boot_area << 3);
+		break;
+	default:
+		fprintf(stderr, "Cannot enable the boot area\n");
+		exit(1);
+	}
+	if (send_ack)
+		value |= EXT_CSD_PART_CONFIG_ACC_ACK;
+	else
+		value &= ~EXT_CSD_PART_CONFIG_ACC_ACK;
+
+	ret = write_extcsd_value(fd, EXT_CSD_PART_CONFIG, value);
+	if (ret) {
+		fprintf(stderr, "Could not write 0x%02x to "
+			"EXT_CSD[%d] in %s\n",
+			value, EXT_CSD_PART_CONFIG, device);
+		exit(1);
+	}
+	return ret;
+}
+
+
 int do_read_extcsd(int nargs, char **argv)
 {
 	__u8 ext_csd[512], ext_csd_rev, reg;

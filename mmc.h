@@ -35,6 +35,7 @@
 #define EXT_CSD_PART_SWITCH_TIME	199
 #define EXT_CSD_BOOT_CFG		179
 #define EXT_CSD_BOOT_WP			173
+#define EXT_CSD_PART_CONFIG		179
 
 /*
  * EXT_CSD field definitions
@@ -52,6 +53,11 @@
 #define EXT_CSD_BOOT_CFG_ACK		(1<<6)
 #define EXT_CSD_BOOT_CFG_EN		(0x38)
 #define EXT_CSD_BOOT_CFG_ACC		(0x03)
+#define EXT_CSD_PART_CONFIG_ACC_MASK	  (0x7)
+#define EXT_CSD_PART_CONFIG_ACC_BOOT0	  (0x1)
+#define EXT_CSD_PART_CONFIG_ACC_BOOT1	  (0x2)
+#define EXT_CSD_PART_CONFIG_ACC_USER_AREA (0x7)
+#define EXT_CSD_PART_CONFIG_ACC_ACK	  (0x40)
 
 /* From kernel linux/mmc/core.h */
 #define MMC_RSP_PRESENT	(1 << 0)
