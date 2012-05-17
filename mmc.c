@@ -65,6 +65,11 @@ static struct Command commands[] = {
 		"Set the eMMC writeprotect status of <device>.",
 	  NULL
 	},
+	{ do_disable_512B_emulation, -1,
+	  "disable 512B emulation", "<device>\n"
+		"Set the eMMC data sector size to 4KB by disabling emulation on <device>.",
+	  NULL
+	},
 	{ do_write_boot_en, -3,
 	  "bootpart enable", "<boot_partition> " "<send_ack> " "<device>\n"
 		"Enable the boot partition for the <device>.\nTo receive acknowledgment of boot from the card set <send_ack>\nto 1, else set it to 0.",

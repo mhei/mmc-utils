@@ -170,6 +170,50 @@ int do_writeprotect_set(int nargs, char **argv)
 	return ret;
 }
 
+int do_disable_512B_emulation(int nargs, char **argv)
+{
+	__u8 ext_csd[512], native_sector_size, data_sector_size, wr_rel_param;
+	int fd, ret;
+	char *device;
+
+	CHECK(nargs != 2, "Usage: mmc disable 512B emulation </path/to/mmcblkX>\n", exit(1));
+	device = argv[1];
+
+	fd = open(device, O_RDWR);
+	if (fd < 0) {
+		perror("open");
+		exit(1);
+	}
+
+	ret = read_extcsd(fd, ext_csd);
+	if (ret) {
+		fprintf(stderr, "Could not read EXT_CSD from %s\n", device);
+		exit(1);
+	}
+
+	wr_rel_param = ext_csd[EXT_CSD_WR_REL_PARAM];
+	native_sector_size = ext_csd[EXT_CSD_NATIVE_SECTOR_SIZE];
+	data_sector_size = ext_csd[EXT_CSD_DATA_SECTOR_SIZE];
+
+	if (native_sector_size && !data_sector_size &&
+	   (wr_rel_param & EN_REL_WR)) {
+		ret = write_extcsd_value(fd, EXT_CSD_USE_NATIVE_SECTOR, 1);
+
+		if (ret) {
+			fprintf(stderr, "Could not write 0x%02x to EXT_CSD[%d] in %s\n",
+					1, EXT_CSD_BOOT_WP, device);
+			exit(1);
+		}
+		printf("MMC disable 512B emulation successful.  Now reset the device to switch to 4KB native sector mode.\n");
+	} else if (native_sector_size && data_sector_size) {
+		printf("MMC 512B emulation mode is already disabled; doing nothing.\n");
+	} else {
+		printf("MMC does not support disabling 512B emulation mode.\n");
+	}
+
+	return ret;
+}
+
 int do_write_boot_en(int nargs, char **argv)
 {
 	__u8 ext_csd[512];
@@ -235,7 +279,6 @@ int do_write_boot_en(int nargs, char **argv)
 	}
 	return ret;
 }
-
 
 int do_read_extcsd(int nargs, char **argv)
 {
