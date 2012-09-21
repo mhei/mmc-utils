@@ -31,12 +31,14 @@
  */
 #define EXT_CSD_S_CMD_SET		504
 #define EXT_CSD_HPI_FEATURE		503
+#define EXT_CSD_BKOPS_SUPPORT		502	/* RO */
 #define EXT_CSD_BOOT_INFO		228	/* R/W */
 #define EXT_CSD_PART_SWITCH_TIME	199
 #define EXT_CSD_BOOT_CFG		179
 #define EXT_CSD_PART_CONFIG		179
 #define EXT_CSD_BOOT_WP			173
 #define EXT_CSD_WR_REL_PARAM		166
+#define EXT_CSD_BKOPS_EN		163	/* R/W */
 #define EXT_CSD_NATIVE_SECTOR_SIZE	63 /* R */
 #define EXT_CSD_USE_NATIVE_SECTOR	62 /* R/W */
 #define EXT_CSD_DATA_SECTOR_SIZE	61 /* R */
@@ -46,6 +48,11 @@
  */
 #define HS_CTRL_REL	(1<<0)
 #define EN_REL_WR	(1<<2)
+
+/*
+ * BKOPS_EN field definition
+ */
+#define BKOPS_ENABLE	(1<<0)
 
 /*
  * EXT_CSD field definitions
