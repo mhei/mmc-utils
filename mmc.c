@@ -62,12 +62,12 @@ static struct Command commands[] = {
 	},
 	{ do_writeprotect_set, -1,
 	  "writeprotect set", "<device>\n"
-		"Set the eMMC writeprotect status of <device>.",
+		"Set the eMMC writeprotect status of <device>.\nThis sets the eMMC to be write-protected until next boot.",
 	  NULL
 	},
 	{ do_disable_512B_emulation, -1,
 	  "disable 512B emulation", "<device>\n"
-		"Set the eMMC data sector size to 4KB by disabling emulation on <device>.",
+		"Set the eMMC data sector size to 4KB by disabling emulation on\n<device>.",
 	  NULL
 	},
 	{ do_write_boot_en, -3,
