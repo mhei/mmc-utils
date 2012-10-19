@@ -80,6 +80,16 @@ static struct Command commands[] = {
 		"Enable the eMMC BKOPS feature on <device>.\nNOTE!  This is a one-time programmable (unreversible) change.",
 	  NULL
 	},
+	{ do_hwreset_en, -1,
+	  "hwreset enable", "<device>\n"
+		"Permanently enable the eMMC H/W Reset feature on <device>.\nNOTE!  This is a one-time programmable (unreversible) change.",
+	  NULL
+	},
+	{ do_hwreset_dis, -1,
+	  "hwreset disable", "<device>\n"
+		"Permanently disable the eMMC H/W Reset feature on <device>.\nNOTE!  This is a one-time programmable (unreversible) change.",
+	  NULL
+	},
 	{ 0, 0, 0, 0 }
 };
 

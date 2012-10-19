@@ -39,6 +39,7 @@
 #define EXT_CSD_BOOT_WP			173
 #define EXT_CSD_WR_REL_PARAM		166
 #define EXT_CSD_BKOPS_EN		163	/* R/W */
+#define EXT_CSD_RST_N_FUNCTION		162	/* R/W */
 #define EXT_CSD_NATIVE_SECTOR_SIZE	63 /* R */
 #define EXT_CSD_USE_NATIVE_SECTOR	62 /* R/W */
 #define EXT_CSD_DATA_SECTOR_SIZE	61 /* R */
@@ -70,6 +71,9 @@
 #define EXT_CSD_BOOT_CFG_ACK		(1<<6)
 #define EXT_CSD_BOOT_CFG_EN		(0x38)
 #define EXT_CSD_BOOT_CFG_ACC		(0x03)
+#define EXT_CSD_RST_N_EN_MASK		(0x03)
+#define EXT_CSD_HW_RESET_EN		(0x01)
+#define EXT_CSD_HW_RESET_DIS		(0x02)
 #define EXT_CSD_PART_CONFIG_ACC_MASK	  (0x7)
 #define EXT_CSD_PART_CONFIG_ACC_BOOT0	  (0x1)
 #define EXT_CSD_PART_CONFIG_ACC_BOOT1	  (0x2)
