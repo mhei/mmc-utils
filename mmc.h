@@ -71,7 +71,7 @@
 #define EXT_CSD_BOOT_INFO_ALT		(1<<0)
 #define EXT_CSD_BOOT_CFG_ACK		(1<<6)
 #define EXT_CSD_BOOT_CFG_EN		(0x38)
-#define EXT_CSD_BOOT_CFG_ACC		(0x03)
+#define EXT_CSD_BOOT_CFG_ACC		(0x07)
 #define EXT_CSD_RST_N_EN_MASK		(0x03)
 #define EXT_CSD_HW_RESET_EN		(0x01)
 #define EXT_CSD_HW_RESET_DIS		(0x02)

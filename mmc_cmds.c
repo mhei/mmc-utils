@@ -613,7 +613,7 @@ int do_read_extcsd(int nargs, char **argv)
 		ext_csd[181]);
 	reg = ext_csd[EXT_CSD_BOOT_CFG];
 	printf("Boot configuration bytes [PARTITION_CONFIG: 0x%02x]\n", reg);
-	switch (reg & EXT_CSD_BOOT_CFG_EN) {
+	switch ((reg & EXT_CSD_BOOT_CFG_EN)>>3) {
 	case 0x0:
 		printf(" Not boot enable\n");
 		break;
@@ -637,8 +637,11 @@ int do_read_extcsd(int nargs, char **argv)
 	case 0x2:
 		printf(" R/W Boot Partition 2\n");
 		break;
+	case 0x3:
+		printf(" R/W Replay Protected Memory Block (RPMB)\n");
+		break;
 	default:
-		printf(" Access to General Purpuse partition %d\n",
+		printf(" Access to General Purpose partition %d\n",
 			(reg & EXT_CSD_BOOT_CFG_ACC) - 3);
 		break;
 	}
