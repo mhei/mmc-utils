@@ -578,29 +578,16 @@ int do_read_extcsd(int nargs, char **argv)
 		printf("I/O Driver Strength [DRIVER_STRENGTH: 0x%02x]\n",
 			ext_csd[197]);
 
-	printf("Card Type [CARD_TYPE: 0x%02x]\n", ext_csd[196]);
-	/* DEVICE_TYPE in A45 */
-	switch (reg) {
-	case 5:
-		printf("HS200 Single Data Rate eMMC @200MHz 1.2VI/O\n");
-		break;
-	case 4:
-		printf("HS200 Single Data Rate eMMC @200MHz 1.8VI/O\n");
-		break;
-	case 3:
-		printf("HS Dual Data Rate eMMC @52MHz 1.2VI/O\n");
+	/* DEVICE_TYPE in A45, CARD_TYPE in A441 */
+	reg = ext_csd[196];
+	printf("Card Type [CARD_TYPE: 0x%02x]\n", reg);
+	if (reg & 0x20) printf(" HS200 Single Data Rate eMMC @200MHz 1.2VI/O\n");
+	if (reg & 0x10) printf(" HS200 Single Data Rate eMMC @200MHz 1.8VI/O\n");
+	if (reg & 0x08) printf(" HS Dual Data Rate eMMC @52MHz 1.2VI/O\n");
+	if (reg & 0x04)	printf(" HS Dual Data Rate eMMC @52MHz 1.8V or 3VI/O\n");
+	if (reg & 0x02)	printf(" HS eMMC @52MHz - at rated device voltage(s)\n");
+	if (reg & 0x01) printf(" HS eMMC @26MHz - at rated device voltage(s)\n");
 
-		break;
-	case 2:
-		printf("HS Dual Data Rate eMMC @52MHz 1.8V or 3VI/O\n");
-		break;
-	case 1:
-		printf("HS eMMC @52MHz - at rated device voltage(s)\n");
-		break;
-	case 0:
-		printf("HS eMMC @26MHz - at rated device voltage(s)\n");
-		break;
-	}
 	printf("CSD structure version [CSD_STRUCTURE: 0x%02x]\n", ext_csd[194]);
 	/* ext_csd_rev = ext_csd[192] (already done!!!) */
 	printf("Command set [CMD_SET: 0x%02x]\n", ext_csd[191]);
@@ -762,7 +749,8 @@ int do_read_extcsd(int nargs, char **argv)
 			" [PACKED_FAILURE_INDEX]: 0x%02x\n", ext_csd[35]);
 		printf("Power Off Notification"
 			" [POWER_OFF_NOTIFICATION]: 0x%02x\n", ext_csd[34]);
-		printf("Control to turn the Cache ON/OFF"			" [CACHE_CTRL]: 0x%02x\n", ext_csd[33]);
+		printf("Control to turn the Cache ON/OFF"
+			" [CACHE_CTRL]: 0x%02x\n", ext_csd[33]);
 		/* flush_cache ext_csd[32] not readable */
 		/*Reserved [31:0] */
 	}
