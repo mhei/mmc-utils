@@ -16,10 +16,12 @@
 
 #include <asm-generic/int-ll64.h>
 #include <linux/mmc/ioctl.h>
-#include <linux/major.h>
 #include <stdio.h>
 
 #define CHECK(expr, msg, err_stmt) { if (expr) { fprintf(stderr, msg); err_stmt; } }
+
+/* From kernel linux/major.h */
+#define MMC_BLOCK_MAJOR			179
 
 /* From kernel linux/mmc/mmc.h */
 #define MMC_SWITCH		6	/* ac	[31:0] See below	R1b */
