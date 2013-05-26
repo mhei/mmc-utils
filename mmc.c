@@ -90,6 +90,11 @@ static struct Command commands[] = {
 		"Permanently disable the eMMC H/W Reset feature on <device>.\nNOTE!  This is a one-time programmable (unreversible) change.",
 	  NULL
 	},
+	{ do_sanitize, -1,
+	  "sanitize", "<device>\n"
+		"Send Sanitize command to the <device>.\nThis will delete the unmapped memory region of the device.",
+	  NULL
+	},
 	{ 0, 0, 0, 0 }
 };
 

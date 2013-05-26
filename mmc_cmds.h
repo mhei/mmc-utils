@@ -24,3 +24,4 @@ int do_write_boot_en(int nargs, char **argv);
 int do_write_bkops_en(int nargs, char **argv);
 int do_hwreset_en(int nargs, char **argv);
 int do_hwreset_dis(int nargs, char **argv);
+int do_sanitize(int nargs, char **argv);

@@ -767,3 +767,31 @@ int do_read_extcsd(int nargs, char **argv)
 out_free:
 	return ret;
 }
+
+int do_sanitize(int nargs, char **argv)
+{
+	int fd, ret;
+	char *device;
+
+	CHECK(nargs != 2, "Usage: mmc sanitize </path/to/mmcblkX>\n",
+			exit(1));
+
+	device = argv[1];
+
+	fd = open(device, O_RDWR);
+	if (fd < 0) {
+		perror("open");
+		exit(1);
+	}
+
+	ret = write_extcsd_value(fd, EXT_CSD_SANITIZE_START, 1);
+	if (ret) {
+		fprintf(stderr, "Could not write 0x%02x to EXT_CSD[%d] in %s\n",
+			1, EXT_CSD_SANITIZE_START, device);
+		exit(1);
+	}
+
+	return ret;
+
+}
+
