@@ -70,6 +70,11 @@ static struct Command commands[] = {
 		"Set the eMMC data sector size to 4KB by disabling emulation on\n<device>.",
 	  NULL
 	},
+	{ do_enh_area_set, -4,
+	  "enh_area set", "<-y|-n> " "<start KiB> " "<length KiB> " "<device>\n"
+		"Enable the enhanced user area for the <device>.\nDry-run only unless -y is passed.\nNOTE!  This is a one-time programmable (unreversible) change.",
+	  NULL
+	},
 	{ do_status_get, -1,
 	  "status get", "<device>\n"
 	  "Print the response to STATUS_SEND (CMD13).",

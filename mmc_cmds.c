@@ -449,6 +449,172 @@ unsigned int get_hc_erase_grp_size(__u8 *ext_csd)
 	return ext_csd[224];
 }
 
+int do_enh_area_set(int nargs, char **argv)
+{
+	__u8 value;
+	__u8 ext_csd[512];
+	int fd, ret;
+	char *device;
+	int dry_run = 1;
+	unsigned int start_kib, length_kib, enh_start_addr, enh_size_mult;
+	unsigned long align;
+
+	CHECK(nargs != 5, "Usage: mmc enh_area set <-y|-n> <start KiB> <length KiB> "
+			  "</path/to/mmcblkX>\n", exit(1));
+
+	if (!strcmp("-y", argv[1]))
+		dry_run = 0;
+
+	start_kib = strtol(argv[2], NULL, 10);
+	length_kib = strtol(argv[3], NULL, 10);
+	device = argv[4];
+
+	fd = open(device, O_RDWR);
+	if (fd < 0) {
+		perror("open");
+		exit(1);
+	}
+
+	ret = read_extcsd(fd, ext_csd);
+	if (ret) {
+		fprintf(stderr, "Could not read EXT_CSD from %s\n", device);
+		exit(1);
+	}
+
+	/* assert ENH_ATTRIBUTE_EN */
+	if (!(ext_csd[EXT_CSD_PARTITIONING_SUPPORT] & EXT_CSD_ENH_ATTRIBUTE_EN))
+	{
+		printf(" Device cannot have enhanced tech.\n");
+		exit(1);
+	}
+
+	/* assert not PARTITION_SETTING_COMPLETED */
+	if (ext_csd[EXT_CSD_PARTITION_SETTING_COMPLETED])
+	{
+		printf(" Device is already partitioned\n");
+		exit(1);
+	}
+
+	align = 512l * get_hc_wp_grp_size(ext_csd) * get_hc_erase_grp_size(ext_csd);
+
+	enh_size_mult = (length_kib + align/2l) / align;
+
+	enh_start_addr = start_kib * 1024 / (is_blockaddresed(ext_csd) ? 512 : 1);
+	enh_start_addr /= align;
+	enh_start_addr *= align;
+
+	/* set EXT_CSD_ERASE_GROUP_DEF bit 0 */
+	ret = write_extcsd_value(fd, EXT_CSD_ERASE_GROUP_DEF, 0x1);
+	if (ret) {
+		fprintf(stderr, "Could not write 0x1 to "
+			"EXT_CSD[%d] in %s\n",
+			EXT_CSD_ERASE_GROUP_DEF, device);
+		exit(1);
+	}
+
+	/* write to ENH_START_ADDR and ENH_SIZE_MULT and PARTITIONS_ATTRIBUTE's ENH_USR bit */
+	value = (enh_start_addr >> 24) & 0xff;
+	ret = write_extcsd_value(fd, EXT_CSD_ENH_START_ADDR_3, value);
+	if (ret) {
+		fprintf(stderr, "Could not write 0x%02x to "
+			"EXT_CSD[%d] in %s\n", value,
+			EXT_CSD_ENH_START_ADDR_3, device);
+		exit(1);
+	}
+	value = (enh_start_addr >> 16) & 0xff;
+	ret = write_extcsd_value(fd, EXT_CSD_ENH_START_ADDR_2, value);
+	if (ret) {
+		fprintf(stderr, "Could not write 0x%02x to "
+			"EXT_CSD[%d] in %s\n", value,
+			EXT_CSD_ENH_START_ADDR_2, device);
+		exit(1);
+	}
+	value = (enh_start_addr >> 8) & 0xff;
+	ret = write_extcsd_value(fd, EXT_CSD_ENH_START_ADDR_1, value);
+	if (ret) {
+		fprintf(stderr, "Could not write 0x%02x to "
+			"EXT_CSD[%d] in %s\n", value,
+			EXT_CSD_ENH_START_ADDR_1, device);
+		exit(1);
+	}
+	value = enh_start_addr & 0xff;
+	ret = write_extcsd_value(fd, EXT_CSD_ENH_START_ADDR_0, value);
+	if (ret) {
+		fprintf(stderr, "Could not write 0x%02x to "
+			"EXT_CSD[%d] in %s\n", value,
+			EXT_CSD_ENH_START_ADDR_0, device);
+		exit(1);
+	}
+
+	value = (enh_size_mult >> 16) & 0xff;
+	ret = write_extcsd_value(fd, EXT_CSD_ENH_SIZE_MULT_2, value);
+	if (ret) {
+		fprintf(stderr, "Could not write 0x%02x to "
+			"EXT_CSD[%d] in %s\n", value,
+			EXT_CSD_ENH_SIZE_MULT_2, device);
+		exit(1);
+	}
+	value = (enh_size_mult >> 8) & 0xff;
+	ret = write_extcsd_value(fd, EXT_CSD_ENH_SIZE_MULT_1, value);
+	if (ret) {
+		fprintf(stderr, "Could not write 0x%02x to "
+			"EXT_CSD[%d] in %s\n", value,
+			EXT_CSD_ENH_SIZE_MULT_1, device);
+		exit(1);
+	}
+	value = enh_size_mult & 0xff;
+	ret = write_extcsd_value(fd, EXT_CSD_ENH_SIZE_MULT_0, value);
+	if (ret) {
+		fprintf(stderr, "Could not write 0x%02x to "
+			"EXT_CSD[%d] in %s\n", value,
+			EXT_CSD_ENH_SIZE_MULT_0, device);
+		exit(1);
+	}
+
+	ret = write_extcsd_value(fd, EXT_CSD_PARTITIONS_ATTRIBUTE, EXT_CSD_ENH_USR);
+	if (ret) {
+		fprintf(stderr, "Could not write EXT_CSD_ENH_USR to "
+			"EXT_CSD[%d] in %s\n",
+			EXT_CSD_PARTITIONS_ATTRIBUTE, device);
+		exit(1);
+	}
+
+	if (dry_run)
+	{
+		fprintf(stderr, "NOT setting PARTITION_SETTING_COMPLETED\n");
+		exit(1);
+	}
+
+	fprintf(stderr, "setting OTP PARTITION_SETTING_COMPLETED!\n");
+	ret = write_extcsd_value(fd, EXT_CSD_PARTITION_SETTING_COMPLETED, 0x1);
+	if (ret) {
+		fprintf(stderr, "Could not write 0x1 to "
+			"EXT_CSD[%d] in %s\n",
+			EXT_CSD_PARTITION_SETTING_COMPLETED, device);
+		exit(1);
+	}
+
+	__u32 response;
+	ret = send_status(fd, &response);
+	if (ret) {
+		fprintf(stderr, "Could not get response to SEND_STATUS from %s\n", device);
+		exit(1);
+	}
+
+	if (response & R1_SWITCH_ERROR)
+	{
+		fprintf(stderr, "Setting ENH_USR area failed on %s\n", device);
+		exit(1);
+	}
+
+	fprintf(stderr, "Setting ENH_USR area on %s SUCCESS\n", device);
+	fprintf(stderr, "Device power cycle needed for settings to take effect.\n"
+		"Confirm that PARTITION_SETTING_COMPLETED bit is set using 'extcsd read'"
+		"after power cycle\n");
+
+	return 0;
+}
+
 int do_read_extcsd(int nargs, char **argv)
 {
 	__u8 ext_csd[512], ext_csd_rev, reg;
@@ -723,7 +889,7 @@ int do_read_extcsd(int nargs, char **argv)
 	printf("Boot bus Conditions [BOOT_BUS_CONDITIONS: 0x%02x]\n",
 		ext_csd[177]);
 	printf("High-density erase group definition"
-		" [ERASE_GROUP_DEF: 0x%02x]\n", ext_csd[175]);
+		" [ERASE_GROUP_DEF: 0x%02x]\n", ext_csd[EXT_CSD_ERASE_GROUP_DEF]);
 
 	print_writeprotect_status(ext_csd);
 
@@ -766,7 +932,7 @@ int do_read_extcsd(int nargs, char **argv)
 		printf(" i.e. %lu KiB\n", 512l * reg * wp_sz * erase_sz);
 
 		printf("Partitions attribute [PARTITIONS_ATTRIBUTE]: 0x%02x\n",
-			ext_csd[156]);
+			ext_csd[EXT_CSD_PARTITIONS_ATTRIBUTE]);
 		reg = ext_csd[EXT_CSD_PARTITION_SETTING_COMPLETED];
 		printf("Partitioning Setting"
 			" [PARTITION_SETTING_COMPLETED]: 0x%02x\n",
