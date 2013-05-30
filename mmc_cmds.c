@@ -746,9 +746,13 @@ int do_read_extcsd(int nargs, char **argv)
 		printf("Enhanced User Data Area Size"
 			" [ENH_SIZE_MULT]: 0x%06x\n", (ext_csd[142] << 16) |
 			(ext_csd[141] << 8) | ext_csd[140]);
+
+		reg =	(ext_csd[EXT_CSD_ENH_START_ADDR_3] << 24) |
+			(ext_csd[EXT_CSD_ENH_START_ADDR_2] << 16) |
+			(ext_csd[EXT_CSD_ENH_START_ADDR_1] << 8) |
+			ext_csd[EXT_CSD_ENH_START_ADDR_0];
 		printf("Enhanced User Data Start Address"
-			" [ENH_START_ADDR]: 0x%06x\n", (ext_csd[139] << 16) |
-			   (ext_csd[138] << 8) | ext_csd[137]);
+			" [ENH_START_ADDR]: 0x%06x\n", reg);
 
 		/* A441]: reserved [135] */
 		printf("Bad Block Management mode"
