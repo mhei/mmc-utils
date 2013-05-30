@@ -1,11 +1,13 @@
-CC = gcc
+CC ?= gcc
 AM_CFLAGS = -D_FILE_OFFSET_BITS=64 -D_FORTIFY_SOURCE=2
-CFLAGS = -g -O2
+CFLAGS ?= -g -O2
 objects = mmc.o mmc_cmds.o
 
-CHECKFLAGS= -Wall -Werror -Wuninitialized -Wundef
+CHECKFLAGS = -Wall -Werror -Wuninitialized -Wundef
 
 DEPFLAGS = -Wp,-MMD,$(@D)/.$(@F).d,-MT,$@
+
+override CFLAGS := $(CHECKFLAGS) $(AM_CFLAGS) $(CFLAGS)
 
 INSTALL = install
 prefix ?= /usr/local
@@ -26,7 +28,7 @@ all: $(progs) manpages
 ifdef C
 	$(check) $<
 endif
-	$(CC) $(CHECKFLAGS) $(AM_CFLAGS) $(DEPFLAGS) $(CFLAGS) -c $<
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(DEPFLAGS) -c $<
 
 mmc: $(objects)
 	$(CC) $(CFLAGS) -o $@ $(objects) $(LDFLAGS) $(LIBS)
