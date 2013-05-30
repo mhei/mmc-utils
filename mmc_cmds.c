@@ -72,6 +72,25 @@ int write_extcsd_value(int fd, __u8 index, __u8 value)
 	return ret;
 }
 
+int send_status(int fd, __u32 *response)
+{
+	int ret = 0;
+	struct mmc_ioc_cmd idata;
+
+	memset(&idata, 0, sizeof(idata));
+	idata.opcode = MMC_SEND_STATUS;
+	idata.arg = (1 << 16);
+	idata.flags = MMC_RSP_R1 | MMC_CMD_AC;
+
+	ret = ioctl(fd, MMC_IOC_CMD, &idata);
+	if (ret)
+	perror("ioctl");
+
+	*response = idata.response[0];
+
+	return ret;
+}
+
 void print_writeprotect_status(__u8 *ext_csd)
 {
 	__u8 reg;
@@ -373,6 +392,34 @@ int do_write_bkops_en(int nargs, char **argv)
 			value, EXT_CSD_BKOPS_EN, device);
 		exit(1);
 	}
+
+	return ret;
+}
+
+int do_status_get(int nargs, char **argv)
+{
+	__u32 response;
+	int fd, ret;
+	char *device;
+
+	CHECK(nargs != 2, "Usage: mmc status get </path/to/mmcblkX>\n",
+		exit(1));
+
+	device = argv[1];
+
+	fd = open(device, O_RDWR);
+	if (fd < 0) {
+		perror("open");
+		exit(1);
+	}
+
+	ret = send_status(fd, &response);
+	if (ret) {
+		fprintf(stderr, "Could not read response to SEND_STATUS from %s\n", device);
+		exit(1);
+	}
+
+	printf("SEND_STATUS response: 0x%08x\n", response);
 
 	return ret;
 }
