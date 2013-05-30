@@ -677,9 +677,15 @@ int do_read_extcsd(int nargs, char **argv)
 			    ext_csd[157]);
 		printf("Partitions attribute [PARTITIONS_ATTRIBUTE]: 0x%02x\n",
 			ext_csd[156]);
+		reg = ext_csd[EXT_CSD_PARTITION_SETTING_COMPLETED];
 		printf("Partitioning Setting"
 			" [PARTITION_SETTING_COMPLETED]: 0x%02x\n",
-			ext_csd[155]);
+			reg);
+		if (reg)
+			printf(" Device partition setting complete\n");
+		else
+			printf(" Device partition setting NOT complete\n");
+
 		printf("General Purpose Partition Size\n"
 			" [GP_SIZE_MULT_4]: 0x%06x\n", (ext_csd[154] << 16) |
 			(ext_csd[153] << 8) | ext_csd[152]);
