@@ -424,6 +424,21 @@ int do_status_get(int nargs, char **argv)
 	return ret;
 }
 
+unsigned int get_sector_count(__u8 *ext_csd)
+{
+	return (ext_csd[EXT_CSD_SEC_COUNT_3] << 24) |
+	(ext_csd[EXT_CSD_SEC_COUNT_2] << 16) |
+	(ext_csd[EXT_CSD_SEC_COUNT_1] << 8)  |
+	ext_csd[EXT_CSD_SEC_COUNT_0];
+}
+
+int is_blockaddresed(__u8 *ext_csd)
+{
+	unsigned int sectors = get_sector_count(ext_csd);
+
+	return (sectors > (2u * 1024 * 1024 * 1024) / 512);
+}
+
 int do_read_extcsd(int nargs, char **argv)
 {
 	__u8 ext_csd[512], ext_csd_rev, reg;
@@ -591,9 +606,14 @@ int do_read_extcsd(int nargs, char **argv)
 	/* A441/A43: reserved [218] */
 	printf("Sleep/awake timeout [S_A_TIMEOUT: 0x%02x]\n", ext_csd[217]);
 	/* A441/A43: reserved [216] */
-	printf("Sector Count [SEC_COUNT: 0x%08x]\n", (ext_csd[215] << 24) |
-		      (ext_csd[214] << 16) | (ext_csd[213] << 8)  |
-		      ext_csd[212]);
+
+	unsigned int sectors =	get_sector_count(ext_csd);
+	printf("Sector Count [SEC_COUNT: 0x%08x]\n", sectors);
+	if (is_blockaddresed(ext_csd))
+		printf(" Device is block-addressed\n");
+	else
+		printf(" Device is NOT block-addressed\n");
+
 	/* A441/A43: reserved [211] */
 	printf("Minimum Write Performance for 8bit:\n");
 	printf(" [MIN_PERF_W_8_52: 0x%02x]\n", ext_csd[210]);
@@ -753,6 +773,8 @@ int do_read_extcsd(int nargs, char **argv)
 			ext_csd[EXT_CSD_ENH_START_ADDR_0];
 		printf("Enhanced User Data Start Address"
 			" [ENH_START_ADDR]: 0x%06x\n", reg);
+		printf(" i.e. %lu bytes offset\n", (is_blockaddresed(ext_csd) ?
+				1l : 512l) * reg);
 
 		/* A441]: reserved [135] */
 		printf("Bad Block Management mode"
