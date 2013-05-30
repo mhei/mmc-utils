@@ -439,6 +439,16 @@ int is_blockaddresed(__u8 *ext_csd)
 	return (sectors > (2u * 1024 * 1024 * 1024) / 512);
 }
 
+unsigned int get_hc_wp_grp_size(__u8 *ext_csd)
+{
+	return ext_csd[221];
+}
+
+unsigned int get_hc_erase_grp_size(__u8 *ext_csd)
+{
+	return ext_csd[224];
+}
+
 int do_read_extcsd(int nargs, char **argv)
 {
 	__u8 ext_csd[512], ext_csd_rev, reg;
@@ -593,14 +603,22 @@ int do_read_extcsd(int nargs, char **argv)
 	/* A441/A43: reserved [227] */
 	printf("Boot partition size [BOOT_SIZE_MULTI: 0x%02x]\n", ext_csd[226]);
 	printf("Access size [ACC_SIZE: 0x%02x]\n", ext_csd[225]);
+
+	reg = get_hc_erase_grp_size(ext_csd);
 	printf("High-capacity erase unit size [HC_ERASE_GRP_SIZE: 0x%02x]\n",
-		ext_csd[224]);
+		reg);
+	printf(" i.e. %u KiB\n", 512 * reg);
+
 	printf("High-capacity erase timeout [ERASE_TIMEOUT_MULT: 0x%02x]\n",
 		ext_csd[223]);
 	printf("Reliable write sector count [REL_WR_SEC_C: 0x%02x]\n",
 		ext_csd[222]);
+
+	reg = get_hc_wp_grp_size(ext_csd);
 	printf("High-capacity W protect group size [HC_WP_GRP_SIZE: 0x%02x]\n",
-		ext_csd[221]);
+		reg);
+	printf(" i.e. %lu KiB\n", 512l * get_hc_erase_grp_size(ext_csd) * reg);
+
 	printf("Sleep current (VCC) [S_C_VCC: 0x%02x]\n", ext_csd[220]);
 	printf("Sleep current (VCCQ) [S_C_VCCQ: 0x%02x]\n", ext_csd[219]);
 	/* A441/A43: reserved [218] */
@@ -739,9 +757,14 @@ int do_read_extcsd(int nargs, char **argv)
 		else
 			printf(" Device cannot have enhanced tech.\n");
 
+		reg = (ext_csd[159] << 16) | (ext_csd[158] << 8) |
+			ext_csd[157];
 		printf("Max Enhanced Area Size [MAX_ENH_SIZE_MULT]: 0x%06x\n",
-			   (ext_csd[159] << 16) | (ext_csd[158] << 8) |
-			    ext_csd[157]);
+			   reg);
+		unsigned int wp_sz = get_hc_wp_grp_size(ext_csd);
+		unsigned int erase_sz = get_hc_erase_grp_size(ext_csd);
+		printf(" i.e. %lu KiB\n", 512l * reg * wp_sz * erase_sz);
+
 		printf("Partitions attribute [PARTITIONS_ATTRIBUTE]: 0x%02x\n",
 			ext_csd[156]);
 		reg = ext_csd[EXT_CSD_PARTITION_SETTING_COMPLETED];
@@ -763,9 +786,14 @@ int do_read_extcsd(int nargs, char **argv)
 		printf(" [GP_SIZE_MULT_1]: 0x%06x\n", (ext_csd[145] << 16) |
 			   (ext_csd[144] << 8) | ext_csd[143]);
 
+		reg =	(ext_csd[EXT_CSD_ENH_SIZE_MULT_2] << 16) |
+			(ext_csd[EXT_CSD_ENH_SIZE_MULT_1] << 8) |
+			ext_csd[EXT_CSD_ENH_SIZE_MULT_0];
 		printf("Enhanced User Data Area Size"
-			" [ENH_SIZE_MULT]: 0x%06x\n", (ext_csd[142] << 16) |
-			(ext_csd[141] << 8) | ext_csd[140]);
+			" [ENH_SIZE_MULT]: 0x%06x\n", reg);
+		printf(" i.e. %lu KiB\n", 512l * reg *
+		       get_hc_erase_grp_size(ext_csd) *
+		       get_hc_wp_grp_size(ext_csd));
 
 		reg =	(ext_csd[EXT_CSD_ENH_START_ADDR_3] << 24) |
 			(ext_csd[EXT_CSD_ENH_START_ADDR_2] << 16) |
