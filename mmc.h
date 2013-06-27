@@ -43,6 +43,7 @@
 #define EXT_CSD_SANITIZE_START		165
 #define EXT_CSD_BKOPS_EN		163	/* R/W */
 #define EXT_CSD_RST_N_FUNCTION		162	/* R/W */
+#define EXT_CSD_PARTITIONING_SUPPORT	160	/* RO */
 #define EXT_CSD_NATIVE_SECTOR_SIZE	63 /* R */
 #define EXT_CSD_USE_NATIVE_SECTOR	62 /* R/W */
 #define EXT_CSD_DATA_SECTOR_SIZE	61 /* R */
@@ -82,6 +83,8 @@
 #define EXT_CSD_PART_CONFIG_ACC_BOOT1	  (0x2)
 #define EXT_CSD_PART_CONFIG_ACC_USER_AREA (0x7)
 #define EXT_CSD_PART_CONFIG_ACC_ACK	  (0x40)
+#define EXT_CSD_PARTITIONING_EN		(1<<0)
+#define EXT_CSD_ENH_ATTRIBUTE_EN	(1<<1)
 
 /* From kernel linux/mmc/core.h */
 #define MMC_RSP_PRESENT	(1 << 0)

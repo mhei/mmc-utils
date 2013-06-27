@@ -660,14 +660,14 @@ int do_read_extcsd(int nargs, char **argv)
 		printf("H/W reset function"
 			" [RST_N_FUNCTION]: 0x%02x\n", ext_csd[162]);
 		printf("HPI management [HPI_MGMT]: 0x%02x\n", ext_csd[161]);
-		reg = ext_csd[160];
+		reg = ext_csd[EXT_CSD_PARTITIONING_SUPPORT];
 		printf("Partitioning Support [PARTITIONING_SUPPORT]: 0x%02x\n",
 			reg);
-		if (reg & 0x1)
+		if (reg & EXT_CSD_PARTITIONING_EN)
 			printf(" Device support partitioning feature\n");
 		else
 			printf(" Device NOT support partitioning feature\n");
-		if (reg & 0x2)
+		if (reg & EXT_CSD_ENH_ATTRIBUTE_EN)
 			printf(" Device can have enhanced tech.\n");
 		else
 			printf(" Device cannot have enhanced tech.\n");
