@@ -917,10 +917,32 @@ int do_read_extcsd(int nargs, char **argv)
 		/* A441]: reserved [170] */
 		printf("FW configuration [FW_CONFIG]: 0x%02x\n", ext_csd[169]);
 		printf("RPMB Size [RPMB_SIZE_MULT]: 0x%02x\n", ext_csd[168]);
+
+		reg = ext_csd[EXT_CSD_WR_REL_SET];
+		const char * const fast = "existing data is at risk if a power "
+				"failure occurs during a write operation";
+		const char * const reliable = "the device protects existing "
+				"data if a power failure occurs during a write "
+				"operation";
 		printf("Write reliability setting register"
-			" [WR_REL_SET]: 0x%02x\n", ext_csd[167]);
+			" [WR_REL_SET]: 0x%02x\n", reg);
+
+		printf(" user area: %s\n", reg & (1<<0) ? reliable : fast);
+		int i;
+		for (i = 1; i <= 4; i++) {
+			printf(" partition %d: %s\n", i,
+				reg & (1<<i) ? reliable : fast);
+		}
+
+		reg = ext_csd[EXT_CSD_WR_REL_PARAM];
 		printf("Write reliability parameter register"
-			" [WR_REL_PARAM]: 0x%02x\n", ext_csd[166]);
+			" [WR_REL_PARAM]: 0x%02x\n", reg);
+		if (reg & 0x01)
+			printf(" Device supports writing EXT_CSD_WR_REL_SET\n");
+		if (reg & 0x04)
+			printf(" Device supports the enhanced def. of reliable "
+				"write\n");
+
 		/* sanitize_start ext_csd[165]]: not readable
 		 * bkops_start ext_csd[164]]: only writable */
 		printf("Enable background operations handshake"
