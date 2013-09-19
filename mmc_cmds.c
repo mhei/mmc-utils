@@ -449,6 +449,51 @@ unsigned int get_hc_erase_grp_size(__u8 *ext_csd)
 	return ext_csd[224];
 }
 
+int set_partitioning_setting_completed(int dry_run, const char * const device,
+		int fd)
+{
+	int ret;
+
+	if (dry_run) {
+		fprintf(stderr, "NOT setting PARTITION_SETTING_COMPLETED\n");
+		fprintf(stderr, "These changes will not take effect neither "
+			"now nor after a power cycle\n");
+		return 1;
+	}
+
+	fprintf(stderr, "setting OTP PARTITION_SETTING_COMPLETED!\n");
+	ret = write_extcsd_value(fd, EXT_CSD_PARTITION_SETTING_COMPLETED, 0x1);
+	if (ret) {
+		fprintf(stderr, "Could not write 0x1 to "
+			"EXT_CSD[%d] in %s\n",
+			EXT_CSD_PARTITION_SETTING_COMPLETED, device);
+		return 1;
+	}
+
+	__u32 response;
+	ret = send_status(fd, &response);
+	if (ret) {
+		fprintf(stderr, "Could not get response to SEND_STATUS "
+			"from %s\n", device);
+		return 1;
+	}
+
+	if (response & R1_SWITCH_ERROR) {
+		fprintf(stderr, "Setting OTP PARTITION_SETTING_COMPLETED "
+			"failed on %s\n", device);
+		return 1;
+	}
+
+	fprintf(stderr, "Setting OTP PARTITION_SETTING_COMPLETED on "
+		"%s SUCCESS\n", device);
+	fprintf(stderr, "Device power cycle needed for settings to "
+		"take effect.\n"
+		"Confirm that PARTITION_SETTING_COMPLETED bit is set "
+		"using 'extcsd read' after power cycle\n");
+
+	return 0;
+}
+
 int do_enh_area_set(int nargs, char **argv)
 {
 	__u8 value;
@@ -579,38 +624,10 @@ int do_enh_area_set(int nargs, char **argv)
 		exit(1);
 	}
 
-	if (dry_run)
-	{
-		fprintf(stderr, "NOT setting PARTITION_SETTING_COMPLETED\n");
-		exit(1);
-	}
+	printf("Done setting ENH_USR area on %s\n", device);
 
-	fprintf(stderr, "setting OTP PARTITION_SETTING_COMPLETED!\n");
-	ret = write_extcsd_value(fd, EXT_CSD_PARTITION_SETTING_COMPLETED, 0x1);
-	if (ret) {
-		fprintf(stderr, "Could not write 0x1 to "
-			"EXT_CSD[%d] in %s\n",
-			EXT_CSD_PARTITION_SETTING_COMPLETED, device);
+	if (!set_partitioning_setting_completed(dry_run, device, fd))
 		exit(1);
-	}
-
-	__u32 response;
-	ret = send_status(fd, &response);
-	if (ret) {
-		fprintf(stderr, "Could not get response to SEND_STATUS from %s\n", device);
-		exit(1);
-	}
-
-	if (response & R1_SWITCH_ERROR)
-	{
-		fprintf(stderr, "Setting ENH_USR area failed on %s\n", device);
-		exit(1);
-	}
-
-	fprintf(stderr, "Setting ENH_USR area on %s SUCCESS\n", device);
-	fprintf(stderr, "Device power cycle needed for settings to take effect.\n"
-		"Confirm that PARTITION_SETTING_COMPLETED bit is set using 'extcsd read'"
-		"after power cycle\n");
 
 	return 0;
 }
