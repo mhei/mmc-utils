@@ -27,3 +27,4 @@ int do_hwreset_dis(int nargs, char **argv);
 int do_sanitize(int nargs, char **argv);
 int do_status_get(int nargs, char **argv);
 int do_enh_area_set(int nargs, char **argv);
+int do_write_reliability_set(int nargs, char **argv);

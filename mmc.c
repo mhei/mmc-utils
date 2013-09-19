@@ -75,6 +75,11 @@ static struct Command commands[] = {
 		"Enable the enhanced user area for the <device>.\nDry-run only unless -y is passed.\nNOTE!  This is a one-time programmable (unreversible) change.",
 	  NULL
 	},
+	{ do_write_reliability_set, -2,
+	  "write_reliability set", "<-y|-n> " "<partition> " "<device>\n"
+		"Enable write reliability per partition for the <device>.\nDry-run only unless -y is passed.\nNOTE!  This is a one-time programmable (unreversible) change.",
+	  NULL
+	},
 	{ do_status_get, -1,
 	  "status get", "<device>\n"
 	  "Print the response to STATUS_SEND (CMD13).",

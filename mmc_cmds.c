@@ -632,6 +632,68 @@ int do_enh_area_set(int nargs, char **argv)
 	return 0;
 }
 
+int do_write_reliability_set(int nargs, char **argv)
+{
+	__u8 value;
+	__u8 ext_csd[512];
+	int fd, ret;
+
+	int dry_run = 1;
+	int partition;
+	char *device;
+
+	CHECK(nargs != 4, "Usage: mmc write_reliability set <-y|-n> "
+			"<partition> </path/to/mmcblkX>\n", exit(1));
+
+	if (!strcmp("-y", argv[1]))
+		dry_run = 0;
+
+	partition = strtol(argv[2], NULL, 10);
+	device = argv[3];
+
+	fd = open(device, O_RDWR);
+	if (fd < 0) {
+		perror("open");
+		exit(1);
+	}
+
+	ret = read_extcsd(fd, ext_csd);
+	if (ret) {
+		fprintf(stderr, "Could not read EXT_CSD from %s\n", device);
+		exit(1);
+	}
+
+	/* assert not PARTITION_SETTING_COMPLETED */
+	if (ext_csd[EXT_CSD_PARTITION_SETTING_COMPLETED])
+	{
+		printf(" Device is already partitioned\n");
+		exit(1);
+	}
+
+	/* assert HS_CTRL_REL */
+	if (!(ext_csd[EXT_CSD_WR_REL_PARAM] & HS_CTRL_REL)) {
+		printf("Cannot set write reliability parameters, WR_REL_SET is "
+				"read-only\n");
+		exit(1);
+	}
+
+	value = ext_csd[EXT_CSD_WR_REL_SET] | (1<<partition);
+	ret = write_extcsd_value(fd, EXT_CSD_WR_REL_SET, value);
+	if (ret) {
+		fprintf(stderr, "Could not write 0x%02x to EXT_CSD[%d] in %s\n",
+				value, EXT_CSD_WR_REL_SET, device);
+		exit(1);
+	}
+
+	printf("Done setting EXT_CSD_WR_REL_SET to 0x%02x on %s\n",
+		value, device);
+
+	if (!set_partitioning_setting_completed(dry_run, device, fd))
+		exit(1);
+
+	return 0;
+}
+
 int do_read_extcsd(int nargs, char **argv)
 {
 	__u8 ext_csd[512], ext_csd_rev, reg;
