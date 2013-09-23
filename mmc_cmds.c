@@ -1024,8 +1024,10 @@ int do_read_extcsd(int nargs, char **argv)
 		else
 			printf(" Device cannot have enhanced tech.\n");
 
-		reg = (ext_csd[159] << 16) | (ext_csd[158] << 8) |
-			ext_csd[157];
+		reg = (ext_csd[EXT_CSD_MAX_ENH_SIZE_MULT_2] << 16) |
+			(ext_csd[EXT_CSD_MAX_ENH_SIZE_MULT_1] << 8) |
+			ext_csd[EXT_CSD_MAX_ENH_SIZE_MULT_0];
+
 		printf("Max Enhanced Area Size [MAX_ENH_SIZE_MULT]: 0x%06x\n",
 			   reg);
 		unsigned int wp_sz = get_hc_wp_grp_size(ext_csd);
