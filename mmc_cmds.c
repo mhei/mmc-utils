@@ -697,6 +697,7 @@ int do_write_reliability_set(int nargs, char **argv)
 int do_read_extcsd(int nargs, char **argv)
 {
 	__u8 ext_csd[512], ext_csd_rev, reg;
+	__u32 regl;
 	int fd, ret;
 	char *device;
 	const char *str;
@@ -1024,15 +1025,15 @@ int do_read_extcsd(int nargs, char **argv)
 		else
 			printf(" Device cannot have enhanced tech.\n");
 
-		reg = (ext_csd[EXT_CSD_MAX_ENH_SIZE_MULT_2] << 16) |
+		regl = (ext_csd[EXT_CSD_MAX_ENH_SIZE_MULT_2] << 16) |
 			(ext_csd[EXT_CSD_MAX_ENH_SIZE_MULT_1] << 8) |
 			ext_csd[EXT_CSD_MAX_ENH_SIZE_MULT_0];
 
 		printf("Max Enhanced Area Size [MAX_ENH_SIZE_MULT]: 0x%06x\n",
-			   reg);
+			   regl);
 		unsigned int wp_sz = get_hc_wp_grp_size(ext_csd);
 		unsigned int erase_sz = get_hc_erase_grp_size(ext_csd);
-		printf(" i.e. %lu KiB\n", 512l * reg * wp_sz * erase_sz);
+		printf(" i.e. %lu KiB\n", 512l * regl * wp_sz * erase_sz);
 
 		printf("Partitions attribute [PARTITIONS_ATTRIBUTE]: 0x%02x\n",
 			ext_csd[EXT_CSD_PARTITIONS_ATTRIBUTE]);
@@ -1055,23 +1056,23 @@ int do_read_extcsd(int nargs, char **argv)
 		printf(" [GP_SIZE_MULT_1]: 0x%06x\n", (ext_csd[145] << 16) |
 			   (ext_csd[144] << 8) | ext_csd[143]);
 
-		reg =	(ext_csd[EXT_CSD_ENH_SIZE_MULT_2] << 16) |
+		regl =	(ext_csd[EXT_CSD_ENH_SIZE_MULT_2] << 16) |
 			(ext_csd[EXT_CSD_ENH_SIZE_MULT_1] << 8) |
 			ext_csd[EXT_CSD_ENH_SIZE_MULT_0];
 		printf("Enhanced User Data Area Size"
-			" [ENH_SIZE_MULT]: 0x%06x\n", reg);
-		printf(" i.e. %lu KiB\n", 512l * reg *
+			" [ENH_SIZE_MULT]: 0x%06x\n", regl);
+		printf(" i.e. %lu KiB\n", 512l * regl *
 		       get_hc_erase_grp_size(ext_csd) *
 		       get_hc_wp_grp_size(ext_csd));
 
-		reg =	(ext_csd[EXT_CSD_ENH_START_ADDR_3] << 24) |
+		regl =	(ext_csd[EXT_CSD_ENH_START_ADDR_3] << 24) |
 			(ext_csd[EXT_CSD_ENH_START_ADDR_2] << 16) |
 			(ext_csd[EXT_CSD_ENH_START_ADDR_1] << 8) |
 			ext_csd[EXT_CSD_ENH_START_ADDR_0];
 		printf("Enhanced User Data Start Address"
-			" [ENH_START_ADDR]: 0x%06x\n", reg);
+			" [ENH_START_ADDR]: 0x%06x\n", regl);
 		printf(" i.e. %lu bytes offset\n", (is_blockaddresed(ext_csd) ?
-				1l : 512l) * reg);
+				1l : 512l) * regl);
 
 		/* A441]: reserved [135] */
 		printf("Bad Block Management mode"
