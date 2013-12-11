@@ -34,15 +34,17 @@ mmc: $(objects)
 	$(CC) $(CFLAGS) -o $@ $(objects) $(LDFLAGS) $(LIBS)
 
 manpages:
-	cd man && make
+	$(MAKE) -C man
 
 install-man:
-	cd man && make install
+	$(MAKE) -C man install
 
 clean:
 	rm -f $(progs) $(objects)
-	cd man && make clean
+	$(MAKE) -C man clean
 
 install: $(progs) install-man
 	$(INSTALL) -m755 -d $(DESTDIR)$(bindir)
 	$(INSTALL) $(progs) $(DESTDIR)$(bindir)
+
+.PHONY: all clean install manpages install-man
