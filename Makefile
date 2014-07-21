@@ -1,7 +1,11 @@
 CC ?= gcc
 AM_CFLAGS = -D_FILE_OFFSET_BITS=64 -D_FORTIFY_SOURCE=2
 CFLAGS ?= -g -O2
-objects = mmc.o mmc_cmds.o
+objects = \
+	mmc.o \
+	mmc_cmds.o \
+	3rdparty/hmac_sha/hmac_sha2.o \
+	3rdparty/hmac_sha/sha2.o
 
 CHECKFLAGS = -Wall -Werror -Wuninitialized -Wundef
 
@@ -28,7 +32,7 @@ all: $(progs) manpages
 ifdef C
 	$(check) $<
 endif
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(DEPFLAGS) -c $<
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
 
 mmc: $(objects)
 	$(CC) $(CFLAGS) -o $@ $(objects) $(LDFLAGS) $(LIBS)
