@@ -110,6 +110,39 @@ static struct Command commands[] = {
 		"Send Sanitize command to the <device>.\nThis will delete the unmapped memory region of the device.",
 	  NULL
 	},
+	{ do_rpmb_write_key, -1,
+	  "rpmb write-key", "<rpmb device> <key file>\n"
+		  "Program authentication key which is 32 bytes length and stored in the specified file.\n"
+		  "Also you can specify '-' instead of key file path and utility will read the key from stdin.\n"
+		  "BEWARE: key can be programmed only once!\n"
+		  "Example:\n"
+		  "  $ echo -n AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH | mmc rpmb write-key /dev/mmcblk0rpmb -",
+	  NULL
+	},
+	{ do_rpmb_read_counter, -1,
+	  "rpmb read-counter", "<rpmb device>\n"
+		  "Counter value for the <rpmb device> will be read to stdout.",
+	  NULL
+	},
+	{ do_rpmb_read_block, -1,
+	  "rpmb read-block", "<rpmb device> <address> <blocks count> <output file> [key file]\n"
+		  "Blocks of 256 bytes will be read from <rpmb device> to output file or stdout if '-' is specified instead of regular path.\n"
+		  "If key is specified - read data will be verified. Instead of regular path you can specify '-' and key will be read from stdin.\n"
+		  "Example:\n"
+		  "  $ echo -n AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH | mmc rpmb read-block /dev/mmcblk0rpmb 0x02 2 /tmp/block -\n"
+		  "or read two blocks without verification\n"
+		  "  $ mmc rpmb read-block /dev/mmcblk0rpmb 0x02 2 /tmp/block",
+	  NULL
+	},
+	{ do_rpmb_write_block, -1,
+	  "rpmb write-block", "<rpmb device> <address> <256 byte data file> <key file>\n"
+		  "Block of 256 bytes will be written from data file to <rpmb device>.\n"
+		  "Also you can specify '-' instead of key file path or data file and utility will read the data from stdin.\n"
+		  "Example:\n"
+		  "  $ (awk 'BEGIN {while (c++<256) printf \"a\"}' | echo -n AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH) | \\\n"
+		  "    mmc rpmb write-block /dev/mmcblk0rpmb 0x02 - -",
+	  NULL
+	},
 	{ 0, 0, 0, 0 }
 };
 
