@@ -112,11 +112,13 @@ static struct Command commands[] = {
 	},
 	{ do_rpmb_write_key, -1,
 	  "rpmb write-key", "<rpmb device> <key file>\n"
-		  "Program authentication key which is 32 bytes length and stored in the specified file.\n"
-		  "Also you can specify '-' instead of key file path and utility will read the key from stdin.\n"
-		  "BEWARE: key can be programmed only once!\n"
+		  "Program authentication key which is 32 bytes length and stored\n"
+		  "in the specified file. Also you can specify '-' instead of\n"
+		  "key file path to read the key from stdin.\n"
+		  "NOTE!  This is a one-time programmable (unreversible) change.\n"
 		  "Example:\n"
-		  "  $ echo -n AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH | mmc rpmb write-key /dev/mmcblk0rpmb -",
+		  "  $ echo -n AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH | \\\n"
+		  "    mmc rpmb write-key /dev/mmcblk0rpmb -",
 	  NULL
 	},
 	{ do_rpmb_read_counter, -1,
@@ -126,20 +128,25 @@ static struct Command commands[] = {
 	},
 	{ do_rpmb_read_block, -1,
 	  "rpmb read-block", "<rpmb device> <address> <blocks count> <output file> [key file]\n"
-		  "Blocks of 256 bytes will be read from <rpmb device> to output file or stdout if '-' is specified instead of regular path.\n"
-		  "If key is specified - read data will be verified. Instead of regular path you can specify '-' and key will be read from stdin.\n"
+		  "Blocks of 256 bytes will be read from <rpmb device> to output\n"
+		  "file or stdout if '-' is specified. If key is specified - read\n"
+		  "data will be verified. Instead of regular path you can specify\n"
+		  "'-' to read key from stdin.\n"
 		  "Example:\n"
-		  "  $ echo -n AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH | mmc rpmb read-block /dev/mmcblk0rpmb 0x02 2 /tmp/block -\n"
+		  "  $ echo -n AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH | \\\n"
+		  "    mmc rpmb read-block /dev/mmcblk0rpmb 0x02 2 /tmp/block -\n"
 		  "or read two blocks without verification\n"
 		  "  $ mmc rpmb read-block /dev/mmcblk0rpmb 0x02 2 /tmp/block",
 	  NULL
 	},
 	{ do_rpmb_write_block, -1,
 	  "rpmb write-block", "<rpmb device> <address> <256 byte data file> <key file>\n"
-		  "Block of 256 bytes will be written from data file to <rpmb device>.\n"
-		  "Also you can specify '-' instead of key file path or data file and utility will read the data from stdin.\n"
+		  "Block of 256 bytes will be written from data file to\n"
+		  "<rpmb device>. Also you can specify '-' instead of key\n"
+		  "file path or data file to read the data from stdin.\n"
 		  "Example:\n"
-		  "  $ (awk 'BEGIN {while (c++<256) printf \"a\"}' | echo -n AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH) | \\\n"
+		  "  $ (awk 'BEGIN {while (c++<256) printf \"a\"}' | \\\n"
+		  "    echo -n AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH) | \\\n"
 		  "    mmc rpmb write-block /dev/mmcblk0rpmb 0x02 - -",
 	  NULL
 	},
