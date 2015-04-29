@@ -70,6 +70,11 @@ static struct Command commands[] = {
 		"Set the eMMC data sector size to 4KB by disabling emulation on\n<device>.",
 	  NULL
 	},
+	{ do_create_gp_partition, -6,
+	  "gp create", "<-y|-n> " "<length KiB> " "<partition> " "<enh_attr> " "<ext_attr> " "<device>\n"
+		"create general purpose partition for the <device>.\nDry-run only unless -y is passed.\nNOTE!  This is a one-time programmable (unreversible) change.\nTo set enhanced attribute to general partition being created set\n <enh_attr> to 1 else set it to 0.\nTo set extended attribute to general partition\n set <ext_attr> to 1,2 else set it to 0",
+	  NULL
+	},
 	{ do_enh_area_set, -4,
 	  "enh_area set", "<-y|-n> " "<start KiB> " "<length KiB> " "<device>\n"
 		"Enable the enhanced user area for the <device>.\nDry-run only unless -y is passed.\nNOTE!  This is a one-time programmable (unreversible) change.",
