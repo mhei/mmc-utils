@@ -98,7 +98,7 @@ int send_status(int fd, __u32 *response)
 void print_writeprotect_status(__u8 *ext_csd)
 {
 	__u8 reg;
-	__u8 ext_csd_rev = ext_csd[192];
+	__u8 ext_csd_rev = ext_csd[EXT_CSD_REV];
 
 	/* A43: reserved [174:0] */
 	if (ext_csd_rev >= 5) {
@@ -1014,7 +1014,7 @@ int do_read_extcsd(int nargs, char **argv)
 		exit(1);
 	}
 
-	ext_csd_rev = ext_csd[192];
+	ext_csd_rev = ext_csd[EXT_CSD_REV];
 
 	switch (ext_csd_rev) {
 	case 7:
@@ -1218,7 +1218,7 @@ int do_read_extcsd(int nargs, char **argv)
 	if (reg & 0x01) printf(" HS eMMC @26MHz - at rated device voltage(s)\n");
 
 	printf("CSD structure version [CSD_STRUCTURE: 0x%02x]\n", ext_csd[194]);
-	/* ext_csd_rev = ext_csd[192] (already done!!!) */
+	/* ext_csd_rev = ext_csd[EXT_CSD_REV] (already done!!!) */
 	printf("Command set [CMD_SET: 0x%02x]\n", ext_csd[191]);
 	printf("Command set revision [CMD_SET_REV: 0x%02x]\n", ext_csd[189]);
 	printf("Power class [POWER_CLASS: 0x%02x]\n", ext_csd[187]);
@@ -1970,4 +1970,65 @@ int do_rpmb_write_block(int nargs, char **argv)
 		close(key_fd);
 
 	return ret;
+}
+
+int do_cache_ctrl(int value, int nargs, char **argv)
+{
+	__u8 ext_csd[512];
+	int fd, ret;
+	char *device;
+
+	CHECK(nargs != 2, "Usage: mmc cache enable </path/to/mmcblkX>\n",
+			  exit(1));
+
+	device = argv[1];
+
+	fd = open(device, O_RDWR);
+	if (fd < 0) {
+		perror("open");
+		exit(1);
+	}
+
+	ret = read_extcsd(fd, ext_csd);
+	if (ret) {
+		fprintf(stderr, "Could not read EXT_CSD from %s\n", device);
+		exit(1);
+	}
+
+	if (ext_csd[EXT_CSD_REV] < EXT_CSD_REV_V4_5) {
+		fprintf(stderr,
+			"The CACHE option is only availabe on devices >= "
+			"MMC 4.5 %s\n", device);
+		exit(1);
+	}
+
+	/* If the cache size is zero, this device does not have a cache */
+	if (!(ext_csd[EXT_CSD_CACHE_SIZE_3] ||
+			ext_csd[EXT_CSD_CACHE_SIZE_2] ||
+			ext_csd[EXT_CSD_CACHE_SIZE_1] ||
+			ext_csd[EXT_CSD_CACHE_SIZE_0])) {
+		fprintf(stderr,
+			"The CACHE option is not available on %s\n",
+			device);
+		exit(1);
+	}
+	ret = write_extcsd_value(fd, EXT_CSD_CACHE_CTRL, value);
+	if (ret) {
+		fprintf(stderr,
+			"Could not write 0x%02x to EXT_CSD[%d] in %s\n",
+			value, EXT_CSD_CACHE_CTRL, device);
+		exit(1);
+	}
+
+	return ret;
+}
+
+int do_cache_en(int nargs, char **argv)
+{
+	return do_cache_ctrl(1, nargs, argv);
+}
+
+int do_cache_dis(int nargs, char **argv)
+{
+	return do_cache_ctrl(0, nargs, argv);
 }

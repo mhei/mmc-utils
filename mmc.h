@@ -42,12 +42,17 @@
 #define EXT_CSD_S_CMD_SET		504
 #define EXT_CSD_HPI_FEATURE		503
 #define EXT_CSD_BKOPS_SUPPORT		502	/* RO */
+#define EXT_CSD_CACHE_SIZE_3		252
+#define EXT_CSD_CACHE_SIZE_2		251
+#define EXT_CSD_CACHE_SIZE_1		250
+#define EXT_CSD_CACHE_SIZE_0		249
 #define EXT_CSD_BOOT_INFO		228	/* R/W */
 #define EXT_CSD_SEC_COUNT_3		215
 #define EXT_CSD_SEC_COUNT_2		214
 #define EXT_CSD_SEC_COUNT_1		213
 #define EXT_CSD_SEC_COUNT_0		212
 #define EXT_CSD_PART_SWITCH_TIME	199
+#define EXT_CSD_REV			192
 #define EXT_CSD_BOOT_CFG		179
 #define EXT_CSD_PART_CONFIG		179
 #define EXT_CSD_BOOT_BUS_CONDITIONS	177
@@ -88,6 +93,7 @@
 #define EXT_CSD_DATA_SECTOR_SIZE	61 /* R */
 #define EXT_CSD_EXT_PARTITIONS_ATTRIBUTE_1	53
 #define EXT_CSD_EXT_PARTITIONS_ATTRIBUTE_0	52
+#define EXT_CSD_CACHE_CTRL		33
 
 /*
  * WR_REL_PARAM field definitions
@@ -131,6 +137,15 @@
 #define EXT_CSD_ENH_2			(1<<2)
 #define EXT_CSD_ENH_1			(1<<1)
 #define EXT_CSD_ENH_USR			(1<<0)
+#define EXT_CSD_REV_V5_1		8
+#define EXT_CSD_REV_V5_0		7
+#define EXT_CSD_REV_V4_5		6
+#define EXT_CSD_REV_V4_4_1		5
+#define EXT_CSD_REV_V4_3		3
+#define EXT_CSD_REV_V4_2		2
+#define EXT_CSD_REV_V4_1		1
+#define EXT_CSD_REV_V4_0		0
+
 
 /* From kernel linux/mmc/core.h */
 #define MMC_RSP_PRESENT	(1 << 0)

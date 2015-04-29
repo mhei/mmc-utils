@@ -34,3 +34,5 @@ int do_rpmb_write_key(int nargs, char **argv);
 int do_rpmb_read_counter(int nargs, char **argv);
 int do_rpmb_read_block(int nargs, char **argv);
 int do_rpmb_write_block(int nargs, char **argv);
+int do_cache_en(int nargs, char **argv);
+int do_cache_dis(int nargs, char **argv);

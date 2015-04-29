@@ -163,6 +163,18 @@ static struct Command commands[] = {
 		  "    mmc rpmb write-block /dev/mmcblk0rpmb 0x02 - -",
 	  NULL
 	},
+	{ do_cache_en, -1,
+	  "cache enable", "<device>\n"
+		"Enable the eMMC cache feature on <device>.\n"
+		"NOTE! The cache is an optional feature on devices >= eMMC4.5.",
+	  NULL
+	},
+	{ do_cache_dis, -1,
+	  "cache disable", "<device>\n"
+		"Disable the eMMC cache feature on <device>.\n"
+		"NOTE! The cache is an optional feature on devices >= eMMC4.5.",
+	  NULL
+	},
 	{ 0, 0, 0, 0 }
 };
 
