@@ -95,6 +95,14 @@ static struct Command commands[] = {
 		"Enable the boot partition for the <device>.\nTo receive acknowledgment of boot from the card set <send_ack>\nto 1, else set it to 0.",
 	  NULL
 	},
+	{ do_boot_bus_conditions_set, -4,
+	  "bootbus set", "<boot_mode> " "<reset_boot_bus_conditions> " "<boot_bus_width> " "<device>\n"
+	  "Set Boot Bus Conditions.\n"
+	  "<boot_mode> must be \"single_backward|single_hs|dual\"\n"
+	  "<reset_boot_bus_conditions> must be \"x1|retain\"\n"
+	  "<boot_bus_width> must be \"x1|x4|x8\"",
+	  NULL
+	},
 	{ do_write_bkops_en, -1,
 	  "bkops enable", "<device>\n"
 		"Enable the eMMC BKOPS feature on <device>.\nNOTE!  This is a one-time programmable (unreversible) change.",

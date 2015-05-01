@@ -303,6 +303,75 @@ int do_write_boot_en(int nargs, char **argv)
 	return ret;
 }
 
+int do_boot_bus_conditions_set(int nargs, char **argv)
+{
+	__u8 ext_csd[512];
+	__u8 value = 0;
+	int fd, ret;
+	char *device;
+
+	CHECK(nargs != 5, "Usage: mmc: bootbus set <boot_mode> "
+	      "<reset_boot_bus_conditions> <boot_bus_width> <device>\n",
+		exit(1));
+
+	if (strcmp(argv[1], "single_backward") == 0)
+		value |= 0;
+	else if (strcmp(argv[1], "single_hs") == 0)
+		value |= 0x8;
+	else if (strcmp(argv[1], "dual") == 0)
+		value |= 0x10;
+	else {
+		fprintf(stderr, "illegal <boot_mode> specified\n");
+		exit(1);
+	}
+
+	if (strcmp(argv[2], "x1") == 0)
+		value |= 0;
+	else if (strcmp(argv[2], "retain") == 0)
+		value |= 0x4;
+	else {
+		fprintf(stderr,
+			"illegal <reset_boot_bus_conditions> specified\n");
+		exit(1);
+	}
+
+	if (strcmp(argv[3], "x1") == 0)
+		value |= 0;
+	else if (strcmp(argv[3], "x4") == 0)
+		value |= 0x1;
+	else if (strcmp(argv[3], "x8") == 0)
+		value |= 0x2;
+	else {
+		fprintf(stderr,	"illegal <boot_bus_width> specified\n");
+		exit(1);
+	}
+
+	device = argv[4];
+	fd = open(device, O_RDWR);
+	if (fd < 0) {
+		perror("open");
+		exit(1);
+	}
+
+	ret = read_extcsd(fd, ext_csd);
+	if (ret) {
+		fprintf(stderr, "Could not read EXT_CSD from %s\n", device);
+		exit(1);
+	}
+	printf("Changing ext_csd[BOOT_BUS_CONDITIONS] from 0x%02x to 0x%02x\n",
+		ext_csd[EXT_CSD_BOOT_BUS_CONDITIONS], value);
+
+	ret = write_extcsd_value(fd, EXT_CSD_BOOT_BUS_CONDITIONS, value);
+	if (ret) {
+		fprintf(stderr, "Could not write 0x%02x to "
+			"EXT_CSD[%d] in %s\n",
+			value, EXT_CSD_BOOT_BUS_CONDITIONS, device);
+		exit(1);
+	}
+	close(fd);
+	return ret;
+}
+
 int do_hwreset(int value, int nargs, char **argv)
 {
 	__u8 ext_csd[512];
@@ -948,6 +1017,9 @@ int do_read_extcsd(int nargs, char **argv)
 	ext_csd_rev = ext_csd[192];
 
 	switch (ext_csd_rev) {
+	case 7:
+		str = "5.0";
+		break;
 	case 6:
 		str = "4.5";
 		break;
