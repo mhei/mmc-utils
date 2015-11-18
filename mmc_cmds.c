@@ -684,8 +684,8 @@ int do_create_gp_partition(int nargs, char **argv)
 	ext_attr = strtol(argv[5], NULL, 10);
 	device = argv[6];
 
-	if (partition < 0 || partition > 4) {
-		printf("Invalid gp parition number valid range [1-4]\n");
+	if (partition < 1 || partition > 4) {
+		printf("Invalid gp partition number; valid range [1-4].\n");
 		exit(1);
 	}
 
