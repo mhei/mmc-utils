@@ -175,6 +175,24 @@ static struct Command commands[] = {
 		"NOTE! The cache is an optional feature on devices >= eMMC4.5.",
 	  NULL
 	},
+	{ do_read_csd, -1,
+	  "csd read", "<device path>\n"
+		  "Print CSD data from <device path>.\n"
+		  "The device path should specify the csd file directory.",
+	  NULL
+	},
+	{ do_read_cid, -1,
+	  "cid read", "<device path>\n"
+		  "Print CID data from <device path>.\n"
+		  "The device path should specify the cid file directory.",
+	  NULL
+	},
+	{ do_read_scr, -1,
+	  "scr read", "<device path>\n"
+		  "Print SCR data from <device path>.\n"
+		  "The device path should specify the scr file directory.",
+	  NULL
+	},
 	{ 0, 0, 0, 0 }
 };
 
