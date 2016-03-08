@@ -13,6 +13,9 @@
  * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
  * Boston, MA 021110-1307, USA.
  *
+ * Modified to add field firmware update support,
+ * those modifications are Copyright (c) 2016 SanDisk Corp.
+ *
  * (This code is based on btrfs-progs/btrfs.c.)
  */
 
@@ -191,6 +194,11 @@ static struct Command commands[] = {
 	  "scr read", "<device path>\n"
 		  "Print SCR data from <device path>.\n"
 		  "The device path should specify the scr file directory.",
+	  NULL
+	},
+	{ do_ffu, -2,
+	  "ffu", "<image name> <device>\n"
+		"Run Field Firmware Update with <image name> on <device>.\n",
 	  NULL
 	},
 	{ 0, 0, 0, 0 }

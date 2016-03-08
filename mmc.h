@@ -12,6 +12,9 @@
  * License along with this program; if not, write to the
  * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
  * Boston, MA 021110-1307, USA.
+ *
+ * Modified to add field firmware update support,
+ * those modifications are Copyright (c) 2016 SanDisk Corp.
  */
 
 #include <asm-generic/int-ll64.h>
@@ -34,6 +37,7 @@
 #define R1_SWITCH_ERROR   (1 << 7)  /* sx, c */
 #define MMC_SWITCH_MODE_WRITE_BYTE	0x03	/* Set target to value */
 #define MMC_READ_MULTIPLE_BLOCK  18   /* adtc [31:0] data addr   R1  */
+#define MMC_WRITE_BLOCK		24	/* adtc [31:0] data addr	R1  */
 #define MMC_WRITE_MULTIPLE_BLOCK 25   /* adtc                    R1  */
 
 /*
@@ -42,6 +46,17 @@
 #define EXT_CSD_S_CMD_SET		504
 #define EXT_CSD_HPI_FEATURE		503
 #define EXT_CSD_BKOPS_SUPPORT		502	/* RO */
+#define EXT_CSD_SUPPORTED_MODES		493	/* RO */
+#define EXT_CSD_FFU_FEATURES		492	/* RO */
+#define EXT_CSD_FFU_ARG_3		490	/* RO */
+#define EXT_CSD_FFU_ARG_2		489	/* RO */
+#define EXT_CSD_FFU_ARG_1		488	/* RO */
+#define EXT_CSD_FFU_ARG_0		487	/* RO */
+#define EXT_CSD_NUM_OF_FW_SEC_PROG_3	305	/* RO */
+#define EXT_CSD_NUM_OF_FW_SEC_PROG_2	304	/* RO */
+#define EXT_CSD_NUM_OF_FW_SEC_PROG_1	303	/* RO */
+#define EXT_CSD_NUM_OF_FW_SEC_PROG_0	302	/* RO */
+#define EXT_CSD_FIRMWARE_VERSION	254	/* RO */
 #define EXT_CSD_CACHE_SIZE_3		252
 #define EXT_CSD_CACHE_SIZE_2		251
 #define EXT_CSD_CACHE_SIZE_1		250
@@ -58,6 +73,7 @@
 #define EXT_CSD_BOOT_BUS_CONDITIONS	177
 #define EXT_CSD_ERASE_GROUP_DEF		175
 #define EXT_CSD_BOOT_WP			173
+#define EXT_CSD_FW_CONFIG		169	/* R/W */
 #define EXT_CSD_WR_REL_SET		167
 #define EXT_CSD_WR_REL_PARAM		166
 #define EXT_CSD_SANITIZE_START		165
@@ -94,6 +110,9 @@
 #define EXT_CSD_EXT_PARTITIONS_ATTRIBUTE_1	53
 #define EXT_CSD_EXT_PARTITIONS_ATTRIBUTE_0	52
 #define EXT_CSD_CACHE_CTRL		33
+#define EXT_CSD_MODE_CONFIG		30
+#define EXT_CSD_MODE_OPERATION_CODES	29	/* W */
+#define EXT_CSD_FFU_STATUS		26	/* R */
 
 /*
  * WR_REL_PARAM field definitions
@@ -109,6 +128,11 @@
 /*
  * EXT_CSD field definitions
  */
+#define EXT_CSD_FFU_INSTALL		(0x01)
+#define EXT_CSD_FFU_MODE		(0x01)
+#define EXT_CSD_NORMAL_MODE		(0x00)
+#define EXT_CSD_FFU			(1<<0)
+#define EXT_CSD_UPDATE_DISABLE		(1<<0)
 #define EXT_CSD_HPI_SUPP		(1<<0)
 #define EXT_CSD_HPI_IMPL		(1<<1)
 #define EXT_CSD_CMD_SET_NORMAL		(1<<0)

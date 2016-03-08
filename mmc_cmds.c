@@ -12,6 +12,9 @@
  * License along with this program; if not, write to the
  * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
  * Boston, MA 021110-1307, USA.
+ *
+ * Modified to add field firmware update support,
+ * those modifications are Copyright (c) 2016 SanDisk Corp.
  */
 
 #include <stdio.h>
@@ -1017,6 +1020,9 @@ int do_read_extcsd(int nargs, char **argv)
 	ext_csd_rev = ext_csd[EXT_CSD_REV];
 
 	switch (ext_csd_rev) {
+	case 8:
+		str = "5.1";
+		break;
 	case 7:
 		str = "5.0";
 		break;
@@ -1430,6 +1436,10 @@ int do_read_extcsd(int nargs, char **argv)
 		/*Reserved [31:0] */
 	}
 
+	if (ext_csd_rev >= 7) {
+		printf("eMMC Firmware Version: %s\n",
+			(char*)&ext_csd[EXT_CSD_FIRMWARE_VERSION]);
+	}
 out_free:
 	return ret;
 }
@@ -2031,4 +2041,225 @@ int do_cache_en(int nargs, char **argv)
 int do_cache_dis(int nargs, char **argv)
 {
 	return do_cache_ctrl(0, nargs, argv);
+}
+
+int do_ffu(int nargs, char **argv)
+{
+#ifndef MMC_IOC_MULTI_CMD
+	fprintf(stderr, "mmc-utils has been compiled without MMC_IOC_MULTI_CMD"
+			" support, needed by FFU.\n");
+	exit(1);
+#else
+	int dev_fd, img_fd;
+	int sect_done = 0, retry = 3, ret = -EINVAL;
+	unsigned int sect_size;
+	__u8 ext_csd[512];
+	__u8 *buf;
+	__u32 arg;
+	off_t fw_size;
+	ssize_t chunk_size;
+	char *device;
+	struct mmc_ioc_multi_cmd *multi_cmd;
+
+	CHECK(nargs != 3, "Usage: ffu <image name> </path/to/mmcblkX> \n",
+			exit(1));
+
+	device = argv[2];
+	dev_fd = open(device, O_RDWR);
+	if (dev_fd < 0) {
+		perror("device open failed");
+		exit(1);
+	}
+	img_fd = open(argv[1], O_RDONLY);
+	if (img_fd < 0) {
+		perror("image open failed");
+		close(dev_fd);
+		exit(1);
+	}
+
+	buf = malloc(512);
+	multi_cmd = calloc(1, sizeof(struct mmc_ioc_multi_cmd) +
+				3 * sizeof(struct mmc_ioc_cmd));
+	if (!buf || !multi_cmd) {
+		perror("failed to allocate memory");
+		goto out;
+	}
+
+	ret = read_extcsd(dev_fd, ext_csd);
+	if (ret) {
+		fprintf(stderr, "Could not read EXT_CSD from %s\n", device);
+		goto out;
+	}
+
+	if (ext_csd[EXT_CSD_REV] < EXT_CSD_REV_V5_0) {
+		fprintf(stderr,
+			"The FFU feature is only available on devices >= "
+			"MMC 5.0, not supported in %s\n", device);
+		goto out;
+	}
+
+	if (!(ext_csd[EXT_CSD_SUPPORTED_MODES] & EXT_CSD_FFU)) {
+		fprintf(stderr, "FFU is not supported in %s\n", device);
+		goto out;
+	}
+
+	if (ext_csd[EXT_CSD_FW_CONFIG] & EXT_CSD_UPDATE_DISABLE) {
+		fprintf(stderr, "Firmware update was disabled in %s\n", device);
+		goto out;
+	}
+
+	fw_size = lseek(img_fd, 0, SEEK_END);
+
+	if (fw_size == 0) {
+		fprintf(stderr, "Firmware image is empty");
+		goto out;
+	}
+
+	sect_size = (ext_csd[EXT_CSD_DATA_SECTOR_SIZE] == 0) ? 512 : 4096;
+	if (fw_size % sect_size) {
+		fprintf(stderr, "Firmware data size (%jd) is not aligned!\n", (intmax_t)fw_size);
+		goto out;
+	}
+
+	/* set CMD ARG */
+	arg = ext_csd[EXT_CSD_FFU_ARG_0] |
+		ext_csd[EXT_CSD_FFU_ARG_1] << 8 |
+		ext_csd[EXT_CSD_FFU_ARG_2] << 16 |
+		ext_csd[EXT_CSD_FFU_ARG_3] << 24;
+
+	/* prepare multi_cmd to be sent */
+	multi_cmd->num_of_cmds = 3;
+
+	/* put device into ffu mode */
+	multi_cmd->cmds[0].opcode = MMC_SWITCH;
+	multi_cmd->cmds[0].arg = (MMC_SWITCH_MODE_WRITE_BYTE << 24) |
+			(EXT_CSD_MODE_CONFIG << 16) |
+			(EXT_CSD_FFU_MODE << 8) |
+			EXT_CSD_CMD_SET_NORMAL;
+	multi_cmd->cmds[0].flags = MMC_RSP_SPI_R1B | MMC_RSP_R1B | MMC_CMD_AC;
+	multi_cmd->cmds[0].write_flag = 1;
+
+	/* send image chunk */
+	multi_cmd->cmds[1].opcode = MMC_WRITE_BLOCK;
+	multi_cmd->cmds[1].blksz = sect_size;
+	multi_cmd->cmds[1].blocks = 1;
+	multi_cmd->cmds[1].arg = arg;
+	multi_cmd->cmds[1].flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_ADTC;
+	multi_cmd->cmds[1].write_flag = 1;
+	mmc_ioc_cmd_set_data(multi_cmd->cmds[1], buf);
+
+	/* return device into normal mode */
+	multi_cmd->cmds[2].opcode = MMC_SWITCH;
+	multi_cmd->cmds[2].arg = (MMC_SWITCH_MODE_WRITE_BYTE << 24) |
+			(EXT_CSD_MODE_CONFIG << 16) |
+			(EXT_CSD_NORMAL_MODE << 8) |
+			EXT_CSD_CMD_SET_NORMAL;
+	multi_cmd->cmds[2].flags = MMC_RSP_SPI_R1B | MMC_RSP_R1B | MMC_CMD_AC;
+	multi_cmd->cmds[2].write_flag = 1;
+
+do_retry:
+	/* read firmware chunk */
+	lseek(img_fd, 0, SEEK_SET);
+	chunk_size = read(img_fd, buf, 512);
+
+	while (chunk_size > 0) {
+		/* send ioctl with multi-cmd */
+		ret = ioctl(dev_fd, MMC_IOC_MULTI_CMD, multi_cmd);
+
+		if (ret) {
+			perror("Multi-cmd ioctl");
+			/* In case multi-cmd ioctl failed before exiting from ffu mode */
+			ioctl(dev_fd, MMC_IOC_CMD, &multi_cmd->cmds[2]);
+			goto out;
+		}
+
+		ret = read_extcsd(dev_fd, ext_csd);
+		if (ret) {
+			fprintf(stderr, "Could not read EXT_CSD from %s\n", device);
+			goto out;
+		}
+
+		/* Test if we need to restart the download */
+		sect_done = ext_csd[EXT_CSD_NUM_OF_FW_SEC_PROG_0] |
+				ext_csd[EXT_CSD_NUM_OF_FW_SEC_PROG_1] << 8 |
+				ext_csd[EXT_CSD_NUM_OF_FW_SEC_PROG_2] << 16 |
+				ext_csd[EXT_CSD_NUM_OF_FW_SEC_PROG_3] << 24;
+		/* By spec, host should re-start download from the first sector if sect_done is 0 */
+		if (sect_done == 0) {
+			if (retry > 0) {
+				retry--;
+				fprintf(stderr, "Programming failed. Retrying... (%d)\n", retry);
+				goto do_retry;
+			}
+			fprintf(stderr, "Programming failed! Aborting...\n");
+			goto out;
+		} else {
+			fprintf(stderr, "Programmed %d/%jd bytes\r", sect_done * sect_size, (intmax_t)fw_size);
+		}
+
+		/* read the next firmware chunk (if any) */
+		chunk_size = read(img_fd, buf, 512);
+	}
+
+	if ((sect_done * sect_size) == fw_size) {
+		fprintf(stderr, "Programmed %jd/%jd bytes\n", (intmax_t)fw_size, (intmax_t)fw_size);
+		fprintf(stderr, "Programming finished with status %d \n", ret);
+	}
+	else {
+		fprintf(stderr, "FW size and number of sectors written mismatch. Status return %d\n", ret);
+		goto out;
+	}
+
+	/* check mode operation for ffu install*/
+	if (!ext_csd[EXT_CSD_FFU_FEATURES]) {
+		fprintf(stderr, "Please reboot to complete firmware installation on %s\n", device);
+	} else {
+		fprintf(stderr, "Installing firmware on %s...\n", device);
+		/* Re-enter ffu mode and install the firmware */
+		multi_cmd->num_of_cmds = 2;
+
+		/* set ext_csd to install mode */
+		multi_cmd->cmds[1].opcode = MMC_SWITCH;
+		multi_cmd->cmds[1].blksz = 0;
+		multi_cmd->cmds[1].blocks = 0;
+		multi_cmd->cmds[1].arg = (MMC_SWITCH_MODE_WRITE_BYTE << 24) |
+				(EXT_CSD_MODE_OPERATION_CODES << 16) |
+				(EXT_CSD_FFU_INSTALL << 8) |
+				EXT_CSD_CMD_SET_NORMAL;
+		multi_cmd->cmds[1].flags = MMC_RSP_SPI_R1B | MMC_RSP_R1B | MMC_CMD_AC;
+		multi_cmd->cmds[1].write_flag = 1;
+
+		/* send ioctl with multi-cmd */
+		ret = ioctl(dev_fd, MMC_IOC_MULTI_CMD, multi_cmd);
+
+		if (ret) {
+			perror("Multi-cmd ioctl failed setting install mode");
+			/* In case multi-cmd ioctl failed before exiting from ffu mode */
+			ioctl(dev_fd, MMC_IOC_CMD, &multi_cmd->cmds[2]);
+			goto out;
+		}
+
+		ret = read_extcsd(dev_fd, ext_csd);
+		if (ret) {
+			fprintf(stderr, "Could not read EXT_CSD from %s\n", device);
+			goto out;
+		}
+
+		/* return status */
+		ret = ext_csd[EXT_CSD_FFU_STATUS];
+		if (ret) {
+			fprintf(stderr, "%s: error %d during FFU install:\n", device, ret);
+			goto out;
+		} else {
+			fprintf(stderr, "FFU finished successfully\n");
+		}
+	}
+
+out:
+	free(buf);
+	free(multi_cmd);
+	close(img_fd);
+	close(dev_fd);
+	return ret;
+#endif
 }
