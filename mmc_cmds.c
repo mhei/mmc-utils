@@ -275,6 +275,9 @@ int do_write_boot_en(int nargs, char **argv)
 	value = ext_csd[EXT_CSD_PART_CONFIG];
 
 	switch (boot_area) {
+	case EXT_CSD_PART_CONFIG_ACC_NONE:
+		value &= ~(7 << 3);
+		break;
 	case EXT_CSD_PART_CONFIG_ACC_BOOT0:
 		value |= (1 << 3);
 		value &= ~(3 << 4);
