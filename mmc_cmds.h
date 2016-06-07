@@ -20,8 +20,10 @@
 /* mmc_cmds.c */
 int do_read_extcsd(int nargs, char **argv);
 int do_write_extcsd(int nargs, char **argv);
-int do_writeprotect_get(int nargs, char **argv);
-int do_writeprotect_set(int nargs, char **argv);
+int do_writeprotect_boot_get(int nargs, char **argv);
+int do_writeprotect_boot_set(int nargs, char **argv);
+int do_writeprotect_user_get(int nargs, char **argv);
+int do_writeprotect_user_set(int nargs, char **argv);
 int do_disable_512B_emulation(int nargs, char **argv);
 int do_write_boot_en(int nargs, char **argv);
 int do_boot_bus_conditions_set(int nargs, char **argv);

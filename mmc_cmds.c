@@ -32,10 +32,28 @@
 #include <errno.h>
 #include <stdint.h>
 #include <assert.h>
+#include <linux/fs.h>
 
 #include "mmc.h"
 #include "mmc_cmds.h"
 #include "3rdparty/hmac_sha/hmac_sha2.h"
+
+#define WP_BLKS_PER_QUERY 32
+
+#define USER_WP_PERM_PSWD_DIS	0x80
+#define USER_WP_CD_PERM_WP_DIS	0x40
+#define USER_WP_US_PERM_WP_DIS	0x10
+#define USER_WP_US_PWR_WP_DIS	0x08
+#define USER_WP_US_PERM_WP_EN	0x04
+#define USER_WP_US_PWR_WP_EN	0x01
+#define USER_WP_CLEAR (USER_WP_US_PERM_WP_DIS | USER_WP_US_PWR_WP_DIS	\
+			| USER_WP_US_PERM_WP_EN | USER_WP_US_PWR_WP_EN)
+
+#define WPTYPE_NONE 0
+#define WPTYPE_TEMP 1
+#define WPTYPE_PWRON 2
+#define WPTYPE_PERM 3
+
 
 int read_extcsd(int fd, __u8 *ext_csd)
 {
@@ -98,7 +116,69 @@ int send_status(int fd, __u32 *response)
 	return ret;
 }
 
-void print_writeprotect_status(__u8 *ext_csd)
+static __u32 get_size_in_blks(int fd)
+{
+	int res;
+	int size;
+
+	res = ioctl(fd, BLKGETSIZE, &size);
+	if (res) {
+		fprintf(stderr, "Error getting device size, errno: %d\n",
+			errno);
+		perror("");
+		return -1;
+	}
+	return size;
+}
+
+static int set_write_protect(int fd, __u32 blk_addr, int on_off)
+{
+	int ret = 0;
+	struct mmc_ioc_cmd idata;
+
+	memset(&idata, 0, sizeof(idata));
+	idata.write_flag = 1;
+	if (on_off)
+		idata.opcode = MMC_SET_WRITE_PROT;
+	else
+		idata.opcode = MMC_CLEAR_WRITE_PROT;
+	idata.arg = blk_addr;
+	idata.flags = MMC_RSP_SPI_R1B | MMC_RSP_R1B | MMC_CMD_AC;
+
+	ret = ioctl(fd, MMC_IOC_CMD, &idata);
+	if (ret)
+		perror("ioctl");
+
+	return ret;
+}
+
+static int send_write_protect_type(int fd, __u32 blk_addr, __u64 *group_bits)
+{
+	int ret = 0;
+	struct mmc_ioc_cmd idata;
+	__u8 buf[8];
+	__u64 bits = 0;
+	int x;
+
+	memset(&idata, 0, sizeof(idata));
+	idata.write_flag = 0;
+	idata.opcode = MMC_SEND_WRITE_PROT_TYPE;
+	idata.blksz      = 8,
+	idata.blocks     = 1,
+	idata.arg = blk_addr;
+	idata.flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_ADTC;
+	mmc_ioc_cmd_set_data(idata, buf);
+
+	ret = ioctl(fd, MMC_IOC_CMD, &idata);
+	if (ret)
+		perror("ioctl");
+	for (x = 0; x < sizeof(buf); x++)
+		bits |= (__u64)(buf[7 - x]) << (x * 8);
+	*group_bits = bits;
+	return ret;
+}
+
+static void print_writeprotect_boot_status(__u8 *ext_csd)
 {
 	__u8 reg;
 	__u8 ext_csd_rev = ext_csd[EXT_CSD_REV];
@@ -132,14 +212,28 @@ void print_writeprotect_status(__u8 *ext_csd)
 	}
 }
 
-int do_writeprotect_get(int nargs, char **argv)
+static int get_wp_group_size_in_blks(__u8 *ext_csd, __u32 *size)
+{
+	__u8 ext_csd_rev = ext_csd[EXT_CSD_REV];
+
+	if ((ext_csd_rev < 5) || (ext_csd[EXT_CSD_ERASE_GROUP_DEF] == 0))
+		return 1;
+
+	*size = ext_csd[EXT_CSD_HC_ERASE_GRP_SIZE] *
+		ext_csd[EXT_CSD_HC_WP_GRP_SIZE] * 1024;
+	return 0;
+}
+
+
+int do_writeprotect_boot_get(int nargs, char **argv)
 {
 	__u8 ext_csd[512];
 	int fd, ret;
 	char *device;
 
-	CHECK(nargs != 2, "Usage: mmc writeprotect get </path/to/mmcblkX>\n",
-			  exit(1));
+	CHECK(nargs != 2,
+		"Usage: mmc writeprotect boot get </path/to/mmcblkX>\n",
+		exit(1));
 
 	device = argv[1];
 
@@ -155,19 +249,20 @@ int do_writeprotect_get(int nargs, char **argv)
 		exit(1);
 	}
 
-	print_writeprotect_status(ext_csd);
+	print_writeprotect_boot_status(ext_csd);
 
 	return ret;
 }
 
-int do_writeprotect_set(int nargs, char **argv)
+int do_writeprotect_boot_set(int nargs, char **argv)
 {
 	__u8 ext_csd[512], value;
 	int fd, ret;
 	char *device;
 
-	CHECK(nargs != 2, "Usage: mmc writeprotect set </path/to/mmcblkX>\n",
-			  exit(1));
+	CHECK(nargs != 2,
+		"Usage: mmc writeprotect boot set </path/to/mmcblkX>\n",
+		exit(1));
 
 	device = argv[1];
 
@@ -194,6 +289,191 @@ int do_writeprotect_set(int nargs, char **argv)
 	}
 
 	return ret;
+}
+
+static char *prot_desc[] = {
+	"No",
+	"Temporary",
+	"Power-on",
+	"Permanent"
+};
+
+static void print_wp_status(__u32 wp_sizeblks, __u32 start_group,
+			__u32 end_group, int rptype)
+{
+	printf("Write Protect Groups %d-%d (Blocks %d-%d), ",
+		start_group, end_group,
+		start_group * wp_sizeblks, ((end_group + 1) * wp_sizeblks) - 1);
+	printf("%s Write Protection\n", prot_desc[rptype]);
+}
+
+
+int do_writeprotect_user_get(int nargs, char **argv)
+{
+	__u8 ext_csd[512];
+	int fd, ret;
+	char *device;
+	int x;
+	int y = 0;
+	__u32 wp_sizeblks;
+	__u32 dev_sizeblks;
+	__u32 cnt;
+	__u64 bits;
+	__u32 wpblk;
+	__u32 last_wpblk = 0;
+	__u32 prot;
+	__u32 last_prot = -1;
+	int remain;
+
+	CHECK(nargs != 2,
+		"Usage: mmc writeprotect user get </path/to/mmcblkX>\n",
+		exit(1));
+
+	device = argv[1];
+
+	fd = open(device, O_RDWR);
+	if (fd < 0) {
+		perror("open");
+		exit(1);
+	}
+	ret = read_extcsd(fd, ext_csd);
+	if (ret) {
+		fprintf(stderr, "Could not read EXT_CSD from %s\n", device);
+		exit(1);
+	}
+
+	ret = get_wp_group_size_in_blks(ext_csd, &wp_sizeblks);
+	if (ret)
+		exit(1);
+	printf("Write Protect Group size in blocks/bytes: %d/%d\n",
+		wp_sizeblks, wp_sizeblks * 512);
+	dev_sizeblks = get_size_in_blks(fd);
+	cnt = dev_sizeblks / wp_sizeblks;
+	for (x = 0; x < cnt; x += WP_BLKS_PER_QUERY) {
+		ret = send_write_protect_type(fd, x * wp_sizeblks, &bits);
+		if (ret)
+			break;
+		remain = cnt - x;
+		if (remain > WP_BLKS_PER_QUERY)
+			remain = WP_BLKS_PER_QUERY;
+		for (y = 0; y < remain; y++) {
+			prot = (bits >> (y * 2)) & 0x3;
+			if (prot != last_prot) {
+				/* not first time */
+				if (last_prot != -1) {
+					wpblk = x + y;
+					print_wp_status(wp_sizeblks,
+							last_wpblk,
+							wpblk - 1,
+							last_prot);
+					last_wpblk = wpblk;
+				}
+				last_prot = prot;
+			}
+		}
+	}
+	if (last_wpblk != (x + y - 1))
+		print_wp_status(wp_sizeblks, last_wpblk, cnt - 1, last_prot);
+
+	return ret;
+}
+
+int do_writeprotect_user_set(int nargs, char **argv)
+{
+	__u8 ext_csd[512];
+	int fd, ret;
+	char *device;
+	int blk_start;
+	int blk_cnt;
+	__u32 wp_blks;
+	__u8 user_wp;
+	int x;
+	int wptype;
+
+	if (nargs != 5)
+		goto usage;
+	device = argv[4];
+	fd = open(device, O_RDWR);
+	if (fd < 0) {
+		perror("open");
+		exit(1);
+	}
+	if (!strcmp(argv[1], "none")) {
+		wptype = WPTYPE_NONE;
+	} else if (!strcmp(argv[1], "temp")) {
+		wptype = WPTYPE_TEMP;
+	} else if (!strcmp(argv[1], "pwron")) {
+		wptype = WPTYPE_PWRON;
+#ifdef DANGEROUS_COMMANDS_ENABLED
+	} else if (!strcmp(argv[1], "perm")) {
+		wptype = WPTYPE_PERM;
+#endif /* DANGEROUS_COMMANDS_ENABLED */
+	} else {
+		fprintf(stderr, "Error, invalid \"type\"\n");
+		goto usage;
+	}
+	ret = read_extcsd(fd, ext_csd);
+	if (ret) {
+		fprintf(stderr, "Could not read EXT_CSD from %s\n", device);
+		exit(1);
+	}
+	ret = get_wp_group_size_in_blks(ext_csd, &wp_blks);
+	if (ret) {
+		fprintf(stderr, "Operation not supported for this device\n");
+		exit(1);
+	}
+	blk_start = strtol(argv[2], NULL, 0);
+	blk_cnt = strtol(argv[3], NULL, 0);
+	if ((blk_start % wp_blks) || (blk_cnt % wp_blks)) {
+		fprintf(stderr, "<start block> and <blocks> must be a ");
+		fprintf(stderr, "multiple of the Write Protect Group (%d)\n",
+			wp_blks);
+		exit(1);
+	}
+	if (wptype != WPTYPE_NONE) {
+		user_wp = ext_csd[EXT_CSD_USER_WP];
+		user_wp &= ~USER_WP_CLEAR;
+		switch (wptype) {
+		case WPTYPE_TEMP:
+			break;
+		case WPTYPE_PWRON:
+			user_wp |= USER_WP_US_PWR_WP_EN;
+			break;
+		case WPTYPE_PERM:
+			user_wp |= USER_WP_US_PERM_WP_EN;
+			break;
+		}
+		if (user_wp != ext_csd[EXT_CSD_USER_WP]) {
+			ret = write_extcsd_value(fd, EXT_CSD_USER_WP, user_wp);
+			if (ret) {
+				fprintf(stderr, "Error setting EXT_CSD\n");
+				exit(1);
+			}
+		}
+	}
+	for (x = 0; x < blk_cnt; x += wp_blks) {
+		ret = set_write_protect(fd, blk_start + x,
+					wptype != WPTYPE_NONE);
+		if (ret) {
+			fprintf(stderr,
+				"Could not set write protect for %s\n", device);
+			exit(1);
+		}
+	}
+	if (wptype != WPTYPE_NONE) {
+		ret = write_extcsd_value(fd, EXT_CSD_USER_WP,
+					ext_csd[EXT_CSD_USER_WP]);
+		if (ret) {
+			fprintf(stderr, "Error restoring EXT_CSD\n");
+			exit(1);
+		}
+	}
+	return ret;
+
+usage:
+	fprintf(stderr,
+		"Usage: mmc writeprotect user set <type><start block><blocks><device>\n");
+	exit(1);
 }
 
 int do_disable_512B_emulation(int nargs, char **argv)
@@ -1278,7 +1558,7 @@ int do_read_extcsd(int nargs, char **argv)
 	printf("High-density erase group definition"
 		" [ERASE_GROUP_DEF: 0x%02x]\n", ext_csd[EXT_CSD_ERASE_GROUP_DEF]);
 
-	print_writeprotect_status(ext_csd);
+	print_writeprotect_boot_status(ext_csd);
 
 	if (ext_csd_rev >= 5) {
 		/* A441]: reserved [172] */

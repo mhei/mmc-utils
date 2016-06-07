@@ -58,14 +58,28 @@ static struct Command commands[] = {
 		"Print extcsd data from <device>.",
 	  NULL
 	},
-	{ do_writeprotect_get, -1,
-	  "writeprotect get", "<device>\n"
-		"Determine the eMMC writeprotect status of <device>.",
+	{ do_writeprotect_boot_get, -1,
+	  "writeprotect boot get", "<device>\n"
+		"Print the boot partitions write protect status for <device>.",
 	  NULL
 	},
-	{ do_writeprotect_set, -1,
-	  "writeprotect set", "<device>\n"
-		"Set the eMMC writeprotect status of <device>.\nThis sets the eMMC to be write-protected until next boot.",
+	{ do_writeprotect_boot_set, -1,
+	  "writeprotect boot set", "<device>\n"
+		"Set the boot partitions write protect status for <device>.\nThis sets the eMMC boot partitions to be write-protected until\nthe next boot.",
+	  NULL
+	},
+	{ do_writeprotect_user_set, -4,
+	  "writeprotect user set", "<type>" "<start block>" "<blocks>" "<device>\n"
+#ifdef DANGEROUS_COMMANDS_ENABLED
+	  "Set the write protect configuration for the specified region\nof the user area for <device>.\n<type> must be \"none|temp|pwron|perm\".\n    \"none\"  - Clear temporary write protection.\n    \"temp\"  - Set temporary write protection.\n    \"pwron\" - Set write protection until the next poweron.\n    \"perm\"  - Set permanent write protection.\n<start block> specifies the first block of the protected area.\n<blocks> specifies the size of the protected area in blocks.\nNOTE! The area must start and end on Write Protect Group\nboundries, Use the \"writeprotect user get\" command to get the\nWrite Protect Group size.\nNOTE! \"perm\" is a one-time programmable (unreversible) change.",
+#else
+	  "Set the write protect configuration for the specified region\nof the user area for <device>.\n<type> must be \"none|temp|pwron\".\n    \"none\"  - Clear temporary write protection.\n    \"temp\"  - Set temporary write protection.\n    \"pwron\" - Set write protection until the next poweron.\n<start block> specifies the first block of the protected area.\n<blocks> specifies the size of the protected area in blocks.\nNOTE! The area must start and end on Write Protect Group\nboundries, Use the \"writeprotect user get\" command to get the\nWrite Protect Group size.",
+#endif /* DANGEROUS_COMMANDS_ENABLED */
+	  NULL
+	},
+	{ do_writeprotect_user_get, -1,
+	  "writeprotect user get", "<device>\n"
+		"Print the user areas write protect configuration for <device>.",
 	  NULL
 	},
 	{ do_disable_512B_emulation, -1,
