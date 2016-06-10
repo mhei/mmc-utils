@@ -1723,6 +1723,15 @@ int do_read_extcsd(int nargs, char **argv)
 		printf("eMMC Firmware Version: %s\n",
 			(char*)&ext_csd[EXT_CSD_FIRMWARE_VERSION]);
 	}
+
+	if (ext_csd_rev >= 8) {
+		printf("Command Queue Support [CMDQ_SUPPORT]: 0x%02x\n",
+		       ext_csd[EXT_CSD_CMDQ_SUPPORT]);
+		printf("Command Queue Depth [CMDQ_DEPTH]: %u\n",
+		       (ext_csd[EXT_CSD_CMDQ_DEPTH] & 0x1f) + 1);
+		printf("Command Enabled [CMDQ_MODE_EN]: 0x%02x\n",
+		       ext_csd[EXT_CSD_CMDQ_MODE_EN]);
+	}
 out_free:
 	return ret;
 }

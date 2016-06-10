@@ -55,6 +55,8 @@
 #define EXT_CSD_FFU_ARG_2		489	/* RO */
 #define EXT_CSD_FFU_ARG_1		488	/* RO */
 #define EXT_CSD_FFU_ARG_0		487	/* RO */
+#define EXT_CSD_CMDQ_DEPTH		307	/* RO */
+#define EXT_CSD_CMDQ_SUPPORT		308	/* RO */
 #define EXT_CSD_NUM_OF_FW_SEC_PROG_3	305	/* RO */
 #define EXT_CSD_NUM_OF_FW_SEC_PROG_2	304	/* RO */
 #define EXT_CSD_NUM_OF_FW_SEC_PROG_1	303	/* RO */
@@ -119,6 +121,7 @@
 #define EXT_CSD_MODE_CONFIG		30
 #define EXT_CSD_MODE_OPERATION_CODES	29	/* W */
 #define EXT_CSD_FFU_STATUS		26	/* R */
+#define EXT_CSD_CMDQ_MODE_EN		15	/* R/W */
 
 /*
  * WR_REL_PARAM field definitions
