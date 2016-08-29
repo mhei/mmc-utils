@@ -795,6 +795,7 @@ int is_blockaddresed(__u8 *ext_csd)
 {
 	unsigned int sectors = get_sector_count(ext_csd);
 
+	/* over 2GiB devices are block-addressed */
 	return (sectors > (2u * 1024 * 1024 * 1024) / 512);
 }
 
@@ -1659,7 +1660,7 @@ int do_read_extcsd(int nargs, char **argv)
 		printf("Enhanced User Data Start Address"
 			" [ENH_START_ADDR]: 0x%06x\n", regl);
 		printf(" i.e. %lu bytes offset\n", (is_blockaddresed(ext_csd) ?
-				1l : 512l) * regl);
+				512l : 1l) * regl);
 
 		/* A441]: reserved [135] */
 		printf("Bad Block Management mode"
