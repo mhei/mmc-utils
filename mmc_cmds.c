@@ -507,7 +507,7 @@ int do_disable_512B_emulation(int nargs, char **argv)
 
 		if (ret) {
 			fprintf(stderr, "Could not write 0x%02x to EXT_CSD[%d] in %s\n",
-					1, EXT_CSD_BOOT_WP, device);
+					1, EXT_CSD_NATIVE_SECTOR_SIZE, device);
 			exit(1);
 		}
 		printf("MMC disable 512B emulation successful.  Now reset the device to switch to 4KB native sector mode.\n");
