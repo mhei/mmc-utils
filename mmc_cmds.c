@@ -814,11 +814,15 @@ int set_partitioning_setting_completed(int dry_run, const char * const device,
 {
 	int ret;
 
-	if (dry_run) {
+	if (dry_run == 1) {
 		fprintf(stderr, "NOT setting PARTITION_SETTING_COMPLETED\n");
 		fprintf(stderr, "These changes will not take effect neither "
 			"now nor after a power cycle\n");
 		return 1;
+	} else if (dry_run == 2) {
+		printf("-c given, expecting more partition settings before "
+			"writing PARTITION_SETTING_COMPLETED\n");
+		return 0;
 	}
 
 	fprintf(stderr, "setting OTP PARTITION_SETTING_COMPLETED!\n");
@@ -959,11 +963,14 @@ int do_create_gp_partition(int nargs, char **argv)
 	unsigned int length_kib, gp_size_mult;
 	unsigned long align;
 
-	CHECK(nargs != 7, "Usage: mmc gp create <-y|-n> <length KiB> "
+	CHECK(nargs != 7, "Usage: mmc gp create <-y|-n|-c> <length KiB> "
 		"<partition> <enh_attr> <ext_attr> </path/to/mmcblkX>\n", exit(1));
 
-	if (!strcmp("-y", argv[1]))
+	if (!strcmp("-y", argv[1])) {
 		dry_run = 0;
+        } else if (!strcmp("-c", argv[1])) {
+		dry_run = 2;
+	}
 
 	length_kib = strtol(argv[2], NULL, 10);
 	partition = strtol(argv[3], NULL, 10);
@@ -1082,11 +1089,14 @@ int do_enh_area_set(int nargs, char **argv)
 	unsigned int start_kib, length_kib, enh_start_addr, enh_size_mult;
 	unsigned long align;
 
-	CHECK(nargs != 5, "Usage: mmc enh_area set <-y|-n> <start KiB> <length KiB> "
+	CHECK(nargs != 5, "Usage: mmc enh_area set <-y|-n|-c> <start KiB> <length KiB> "
 			  "</path/to/mmcblkX>\n", exit(1));
 
-	if (!strcmp("-y", argv[1]))
+	if (!strcmp("-y", argv[1])) {
 		dry_run = 0;
+	} else if (!strcmp("-c", argv[1])) {
+		dry_run = 2;
+	}
 
 	start_kib = strtol(argv[2], NULL, 10);
 	length_kib = strtol(argv[3], NULL, 10);
