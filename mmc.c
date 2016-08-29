@@ -88,18 +88,18 @@ static struct Command commands[] = {
 	  NULL
 	},
 	{ do_create_gp_partition, -6,
-	  "gp create", "<-y|-n> " "<length KiB> " "<partition> " "<enh_attr> " "<ext_attr> " "<device>\n"
-		"create general purpose partition for the <device>.\nDry-run only unless -y is passed.\nNOTE!  This is a one-time programmable (unreversible) change.\nTo set enhanced attribute to general partition being created set\n <enh_attr> to 1 else set it to 0.\nTo set extended attribute to general partition\n set <ext_attr> to 1,2 else set it to 0",
+	  "gp create", "<-y|-n|-c> " "<length KiB> " "<partition> " "<enh_attr> " "<ext_attr> " "<device>\n"
+		"Create general purpose partition for the <device>.\nDry-run only unless -y or -c is passed.\nUse -c if more partitioning settings are still to come.\nNOTE!  This is a one-time programmable (unreversible) change.\nTo set enhanced attribute to general partition being created set\n <enh_attr> to 1 else set it to 0.\nTo set extended attribute to general partition\n set <ext_attr> to 1,2 else set it to 0",
 	  NULL
 	},
 	{ do_enh_area_set, -4,
-	  "enh_area set", "<-y|-n> " "<start KiB> " "<length KiB> " "<device>\n"
-		"Enable the enhanced user area for the <device>.\nDry-run only unless -y is passed.\nNOTE!  This is a one-time programmable (unreversible) change.",
+	  "enh_area set", "<-y|-n|-c> " "<start KiB> " "<length KiB> " "<device>\n"
+		"Enable the enhanced user area for the <device>.\nDry-run only unless -y or -c is passed.\nUse -c if more partitioning settings are still to come.\nNOTE!  This is a one-time programmable (unreversible) change.",
 	  NULL
 	},
 	{ do_write_reliability_set, -2,
-	  "write_reliability set", "<-y|-n> " "<partition> " "<device>\n"
-		"Enable write reliability per partition for the <device>.\nDry-run only unless -y is passed.\nNOTE!  This is a one-time programmable (unreversible) change.",
+	  "write_reliability set", "<-y|-n|-c> " "<partition> " "<device>\n"
+		"Enable write reliability per partition for the <device>.\nDry-run only unless -y or -c is passed.\nUse -c if more partitioning settings are still to come.\nNOTE!  This is a one-time programmable (unreversible) change.",
 	  NULL
 	},
 	{ do_status_get, -1,
