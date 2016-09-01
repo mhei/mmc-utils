@@ -1234,11 +1234,14 @@ int do_write_reliability_set(int nargs, char **argv)
 	int partition;
 	char *device;
 
-	CHECK(nargs != 4, "Usage: mmc write_reliability set <-y|-n> "
+	CHECK(nargs != 4, "Usage: mmc write_reliability set <-y|-n|-c> "
 			"<partition> </path/to/mmcblkX>\n", exit(1));
 
-	if (!strcmp("-y", argv[1]))
+	if (!strcmp("-y", argv[1])) {
 		dry_run = 0;
+	} else if (!strcmp("-c", argv[1])) {
+		dry_run = 2;
+	}
 
 	partition = strtol(argv[2], NULL, 10);
 	device = argv[3];
