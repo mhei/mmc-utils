@@ -1738,6 +1738,16 @@ int do_read_extcsd(int nargs, char **argv)
 			(char*)&ext_csd[EXT_CSD_FIRMWARE_VERSION]);
 	}
 
+	if (ext_csd_rev >= 7) {
+		printf("eMMC Life Time Estimation A [EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_A]: 0x%02x\n",
+			ext_csd[EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_A]);
+	}
+
+	if (ext_csd_rev >= 7) {
+		printf("eMMC Life Time Estimation B [EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_B]: 0x%02x\n",
+			ext_csd[EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_B]);
+	}
+
 	if (ext_csd_rev >= 8) {
 		printf("Command Queue Support [CMDQ_SUPPORT]: 0x%02x\n",
 		       ext_csd[EXT_CSD_CMDQ_SUPPORT]);
