@@ -38,6 +38,10 @@
 #include "mmc_cmds.h"
 #include "3rdparty/hmac_sha/hmac_sha2.h"
 
+#ifndef offsetof
+#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
+#endif
+
 #define WP_BLKS_PER_QUERY 32
 
 #define USER_WP_PERM_PSWD_DIS	0x80

@@ -19,10 +19,6 @@
 
 #include <linux/mmc/ioctl.h>
 
-#ifndef offsetof
-#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
-#endif
-
 /* From kernel linux/major.h */
 #define MMC_BLOCK_MAJOR			179
 
