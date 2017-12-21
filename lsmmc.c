@@ -2348,8 +2348,10 @@ int do_read_csd(int argc, char **argv)
 	struct config config;
 	int ret;
 
-	CHECK(argc != 2 && argc != 3, "Usage: Print CSD data from <device path>.\n",
-	      exit(1));
+	if (argc != 2 && argc != 3) {
+		fprintf(stderr, "Usage: Print CSD data from <device path>.\n");
+		exit(1);
+	}
 
 	ret = lsmmc_main(&config, argc, argv);
 	if (ret)
@@ -2369,8 +2371,10 @@ int do_read_cid(int argc, char **argv)
 	struct config config;
 	int ret;
 
-	CHECK(argc != 2 && argc != 3, "Usage: Print CID data from <device path>.\n",
-	      exit(1));
+	if (argc != 2 && argc != 3) {
+		fprintf(stderr, "Usage: Print CID data from <device path>.\n");
+		exit(1);
+	}
 
 	ret = lsmmc_main(&config, argc, argv);
 	if (ret)
@@ -2390,8 +2394,10 @@ int do_read_scr(int argc, char **argv)
 	struct config config;
 	int ret;
 
-	CHECK(argc != 2 && argc != 3, "Usage: Print SCR data from <device path>.\n",
-	      exit(1));
+	if (argc != 2 && argc != 3) {
+		fprintf(stderr, "Usage: Print SCR data from <device path>.\n");
+		exit(1);
+	}
 
 	ret = lsmmc_main(&config, argc, argv);
 	if (ret)

@@ -19,9 +19,6 @@
 
 #include <asm-generic/int-ll64.h>
 #include <linux/mmc/ioctl.h>
-#include <stdio.h>
-
-#define CHECK(expr, msg, err_stmt) { if (expr) { fprintf(stderr, msg); err_stmt; } }
 
 #ifndef offsetof
 #define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
