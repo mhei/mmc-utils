@@ -22,17 +22,13 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
-#include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <libgen.h>
-#include <limits.h>
-#include <ctype.h>
 #include <errno.h>
 #include <stdint.h>
 #include <assert.h>
-#include <linux/fs.h>
+#include <linux/fs.h> /* for BLKGETSIZE */
 
 #include "mmc.h"
 #include "mmc_cmds.h"
