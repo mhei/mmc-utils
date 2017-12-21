@@ -1,5 +1,3 @@
-.mmc.o.d
-.mmc_cmds.o.d
-mmc
-mmc.o
-mmc_cmds.o
+.*.o.d
+*.o
+/mmc
