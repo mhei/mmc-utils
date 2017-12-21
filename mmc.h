@@ -17,7 +17,6 @@
  * those modifications are Copyright (c) 2016 SanDisk Corp.
  */
 
-#include <asm-generic/int-ll64.h>
 #include <linux/mmc/ioctl.h>
 
 #ifndef offsetof
