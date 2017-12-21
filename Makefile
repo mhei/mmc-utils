@@ -52,4 +52,6 @@ install: $(progs) install-man
 	$(INSTALL) -m755 -d $(DESTDIR)$(bindir)
 	$(INSTALL) $(progs) $(DESTDIR)$(bindir)
 
+-include $(foreach obj,$(objects), $(dir $(obj))/.$(notdir $(obj)).d)
+
 .PHONY: all clean install manpages install-man
