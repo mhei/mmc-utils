@@ -1152,7 +1152,7 @@ int do_enh_area_set(int nargs, char **argv)
 
 	enh_size_mult = (length_kib + align/2l) / align;
 
-	enh_start_addr = start_kib * 1024 / (is_blockaddresed(ext_csd) ? 512 : 1);
+	enh_start_addr = start_kib * (1024 / (is_blockaddresed(ext_csd) ? 512 : 1));
 	enh_start_addr /= align;
 	enh_start_addr *= align;
 
@@ -1695,9 +1695,9 @@ int do_read_extcsd(int nargs, char **argv)
 			(ext_csd[EXT_CSD_ENH_START_ADDR_1] << 8) |
 			ext_csd[EXT_CSD_ENH_START_ADDR_0];
 		printf("Enhanced User Data Start Address"
-			" [ENH_START_ADDR]: 0x%06x\n", regl);
-		printf(" i.e. %lu bytes offset\n", (is_blockaddresed(ext_csd) ?
-				512l : 1l) * regl);
+			" [ENH_START_ADDR]: 0x%08x\n", regl);
+		printf(" i.e. %llu bytes offset\n", (is_blockaddresed(ext_csd) ?
+				512ll : 1ll) * regl);
 
 		/* A441]: reserved [135] */
 		printf("Bad Block Management mode"
