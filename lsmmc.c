@@ -316,8 +316,9 @@ int parse_ids(struct config *config)
 /* MMC/SD file parsing functions */
 char *read_file(char *name)
 {
-	char *preparsed;
 	char line[4096];
+	char *preparsed, *start = line;
+	int len;
 	FILE *f;
 
 	f = fopen(name, "r");
@@ -348,12 +349,17 @@ char *read_file(char *name)
 	}
 
 	line[sizeof(line) - 1] = '\0';
+	len = strlen(line);
 
-	while (isspace(line[strlen(line) - 1]))
-		line[strlen(line) - 1] = '\0';
+	while (len > 0 && isspace(line[len - 1]))
+		len--;
 
-	while (isspace(line[0]))
-		strncpy(&line[0], &line[1], sizeof(line));
+	while (len > 0 && isspace(*start)) {
+		start++;
+		len--;
+	}
+	memmove(line, start, len);
+	line[len] = '\0';
 
 	return strdup(line);
 }
