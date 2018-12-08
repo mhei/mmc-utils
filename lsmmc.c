@@ -393,10 +393,9 @@ char *read_file(char *name)
 		start++;
 		len--;
 	}
-	memmove(line, start, len);
-	line[len] = '\0';
 
-	return strdup(line);
+	start[len] = '\0';
+	return strdup(start);
 }
 
 /* Hexadecimal string parsing functions */
