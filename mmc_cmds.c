@@ -2070,7 +2070,12 @@ int do_rpmb_read_counter(int nargs, char **argv)
 int do_rpmb_read_block(int nargs, char **argv)
 {
 	int i, ret, dev_fd, data_fd, key_fd = -1;
-	uint16_t addr, blocks_cnt;
+	uint16_t addr;
+	/*
+	 * for reading RPMB, number of blocks is set by CMD23 only, the packet
+	 * frame field for that is set to 0. So, the type is not u16 but uint!
+	 */
+	unsigned int blocks_cnt;
 	unsigned char key[32];
 	struct rpmb_frame frame_in = {
 		.req_resp    = htobe16(MMC_RPMB_READ),
