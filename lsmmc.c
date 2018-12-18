@@ -386,9 +386,9 @@ char *to_binstr(char *hexstr)
 		if (isdigit(*hexstr))
 			strcat(binstr, bindigits[*hexstr - '0']);
 		else if (islower(*hexstr))
-			strcat(binstr, bindigits[*hexstr - 'a']);
+			strcat(binstr, bindigits[*hexstr - 'a' + 10]);
 		else
-			strcat(binstr, bindigits[*hexstr - 'A']);
+			strcat(binstr, bindigits[*hexstr - 'A' + 10]);
 
 		hexstr++;
 	}
