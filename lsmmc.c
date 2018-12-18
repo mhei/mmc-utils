@@ -374,6 +374,8 @@ char *to_binstr(char *hexstr)
 	char *binstr;
 
 	binstr = calloc(strlen(hexstr) * 4 + 1, sizeof(char));
+	if (!binstr)
+		return NULL;
 
 	while (hexstr && *hexstr != '\0') {
 		if (!isxdigit(*hexstr))
