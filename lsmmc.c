@@ -196,6 +196,11 @@ struct ids_database database[] = {
 	},
 	{
 		.type = "mmc",
+		.id = 0x13,
+		.manufacturer = "Micron",
+	},
+	{
+		.type = "mmc",
 		.id = 0x15,
 		.manufacturer = "Samsung/SanDisk/LG",
 	},
