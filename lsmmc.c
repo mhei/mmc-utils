@@ -378,8 +378,10 @@ char *to_binstr(char *hexstr)
 		return NULL;
 
 	while (hexstr && *hexstr != '\0') {
-		if (!isxdigit(*hexstr))
+		if (!isxdigit(*hexstr)) {
+			free(binstr);
 			return NULL;
+		}
 
 		if (isdigit(*hexstr))
 			strcat(binstr, bindigits[*hexstr - '0']);
