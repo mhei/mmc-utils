@@ -371,11 +371,13 @@ char *to_binstr(char *hexstr)
 		"0000", "0001", "0010", "0011", "0100", "0101", "0110", "0111",
 		"1000", "1001", "1010", "1011", "1100", "1101", "1110", "1111",
 	};
-	char *binstr;
+	char *binstr, *tail;
 
 	binstr = calloc(strlen(hexstr) * 4 + 1, sizeof(char));
 	if (!binstr)
 		return NULL;
+
+	tail = binstr;
 
 	while (hexstr && *hexstr != '\0') {
 		if (!isxdigit(*hexstr)) {
@@ -384,13 +386,14 @@ char *to_binstr(char *hexstr)
 		}
 
 		if (isdigit(*hexstr))
-			strcat(binstr, bindigits[*hexstr - '0']);
+			strcat(tail, bindigits[*hexstr - '0']);
 		else if (islower(*hexstr))
-			strcat(binstr, bindigits[*hexstr - 'a' + 10]);
+			strcat(tail, bindigits[*hexstr - 'a' + 10]);
 		else
-			strcat(binstr, bindigits[*hexstr - 'A' + 10]);
+			strcat(tail, bindigits[*hexstr - 'A' + 10]);
 
 		hexstr++;
+		tail += 4;
 	}
 
 	return binstr;
