@@ -112,7 +112,7 @@ struct ids_database database[] = {
 	{
 		.type = "sd",
 		.id = 0x1b,
-		.manufacturer = "Transcend",
+		.manufacturer = "Transcend/Samsung",
 	},
 	{
 		.type = "sd",
@@ -122,7 +122,7 @@ struct ids_database database[] = {
 	{
 		.type = "sd",
 		.id = 0x1d,
-		.manufacturer = "Corsair",
+		.manufacturer = "Corsair/AData",
 	},
 	{
 		.type = "sd",
@@ -136,6 +136,11 @@ struct ids_database database[] = {
 	},
 	{
 		.type = "sd",
+		.id = 0x27,
+		.manufacturer = "Delkin/Phison",
+	},
+	{
+		.type = "sd",
 		.id = 0x28,
 		.manufacturer = "Lexar",
 	},
@@ -143,6 +148,11 @@ struct ids_database database[] = {
 		.type = "sd",
 		.id = 0x30,
 		.manufacturer = "SanDisk",
+	},
+	{
+		.type = "sd",
+		.id = 0x31,
+		.manufacturer = "Silicon Power",
 	},
 	{
 		.type = "sd",
@@ -158,6 +168,21 @@ struct ids_database database[] = {
 		.type = "sd",
 		.id = 0x6f,
 		.manufacturer = "STMicroelectronics",
+	},
+	{
+		.type = "sd",
+		.id = 0x74,
+		.manufacturer = "Transcend",
+	},
+	{
+		.type = "sd",
+		.id = 0x76,
+		.manufacturer = "Patriot",
+	},
+	{
+		.type = "sd",
+		.id = 0x82,
+		.manufacturer = "Gobe/Sony",
 	},
 	{
 		.type = "sd",
@@ -223,6 +248,11 @@ struct ids_database database[] = {
 		.type = "mmc",
 		.id = 0x70,
 		.manufacturer = "Kingston",
+	},
+	{
+		.type = "mmc",
+		.id = 0xfe,
+		.manufacturer = "Micron",
 	},
 };
 
