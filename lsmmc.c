@@ -554,9 +554,9 @@ void print_sd_cid(struct config *config, char *cid)
 		printf("\tOID: %s\n", oid);
 		printf("\tPNM: %s\n", pnm);
 		printf("\tPRV: 0x%01x%01x ", prv_major, prv_minor);
-		printf("(%d.%d)\n", prv_major, prv_minor);
+		printf("(%u.%u)\n", prv_major, prv_minor);
 		printf("\tPSN: 0x%08x\n", psn);
-		printf("\tMDT: 0x%02x%01x %d %s\n", mdt_year, mdt_month,
+		printf("\tMDT: 0x%02x%01x %u %s\n", mdt_year, mdt_month,
 		       2000 + mdt_year, months[mdt_month]);
 		printf("\tCRC: 0x%02x\n", crc);
 	} else {
@@ -566,9 +566,9 @@ void print_sd_cid(struct config *config, char *cid)
 		else
 			printf("manufacturer: 'Unlisted' '%s'\n", oid);
 
-		printf("product: '%s' %d.%d\n", pnm, prv_major, prv_minor);
+		printf("product: '%s' %u.%u\n", pnm, prv_major, prv_minor);
 		printf("serial: 0x%08x\n", psn);
-		printf("manfacturing date: %d %s\n", 2000 + mdt_year,
+		printf("manufacturing date: %u %s\n", 2000 + mdt_year,
 		       months[mdt_month]);
 	}
 }
@@ -625,9 +625,9 @@ void print_mmc_cid(struct config *config, char *cid)
 		printf("\tOID: 0x%01x\n", oid);
 		printf("\tPNM: %s\n", pnm);
 		printf("\tPRV: 0x%01x%01x ", prv_major, prv_minor);
-		printf("(%d.%d)\n", prv_major, prv_minor);
+		printf("(%u.%u)\n", prv_major, prv_minor);
 		printf("\tPSN: 0x%08x\n", psn);
-		printf("\tMDT: 0x%01x%01x %d %s\n", mdt_month, mdt_year,
+		printf("\tMDT: 0x%01x%01x %u %s\n", mdt_month, mdt_year,
 		       1997 + mdt_year, months[mdt_month]);
 		printf("\tCRC: 0x%02x\n", crc);
 	} else {
@@ -637,9 +637,9 @@ void print_mmc_cid(struct config *config, char *cid)
 		else
 			printf("manufacturer: 'Unlisted' '%c'\n", oid);
 
-		printf("product: '%s' %d.%d\n", pnm, prv_major, prv_minor);
+		printf("product: '%s' %u.%u\n", pnm, prv_major, prv_minor);
 		printf("serial: 0x%08x\n", psn);
-		printf("manfacturing date: %d %s\n", 1997 + mdt_year,
+		printf("manufacturing date: %u %s\n", 1997 + mdt_year,
 		       months[mdt_month]);
 	}
 }
@@ -729,7 +729,7 @@ void print_sd_csd(struct config *config, char *csd)
 
 		printf("======SD/CSD======\n");
 
-		printf("\tCSD_STRUCTURE: %d\n", csd_structure);
+		printf("\tCSD_STRUCTURE: %u\n", csd_structure);
 		printf("\tTAAC: 0x%02x (", taac);
 
 		switch (taac_timevalue) {
@@ -816,7 +816,7 @@ void print_sd_csd(struct config *config, char *csd)
 		if (csd_structure == 1 && taac != 0x0e)
 			printf("Warn: Invalid TAAC (should be 0x0e)\n");
 
-		printf("\tNSAC: %d clocks\n", nsac);
+		printf("\tNSAC: %u clocks\n", nsac);
 		if (csd_structure == 1 && nsac != 0x00)
 			printf("Warn: Invalid NSAC (should be 0x00)\n");
 
@@ -1103,12 +1103,12 @@ void print_sd_csd(struct config *config, char *csd)
 			if (erase_blk_en != 0x01)
 				printf("Warn: Invalid ERASE_BLK_EN (should be 0x01)\n");
 
-			printf("\tSECTOR_SIZE: 0x%02x (Erasable sector: %d blocks)\n",
+			printf("\tSECTOR_SIZE: 0x%02x (Erasable sector: %u blocks)\n",
 			       sector_size, sector_size + 1);
 			if (sector_size != 0x7f)
 				printf("Warn: Invalid SECTOR_SIZE (should be 0x7f)\n");
 
-			printf("\tWP_GRP_SIZE: 0x%02x (Write protect group: %d blocks)\n",
+			printf("\tWP_GRP_SIZE: 0x%02x (Write protect group: %u blocks)\n",
 			       wp_grp_size, wp_grp_size + 1);
 			if (wp_grp_size != 0x00)
 				printf("Warn: Invalid WP_GRP_SIZE (should be 0x00)\n");
@@ -1117,7 +1117,7 @@ void print_sd_csd(struct config *config, char *csd)
 			if (wp_grp_enable != 0x00)
 				printf("Warn: Invalid WP_GRP_ENABLE (should be 0x00)\n");
 
-			printf("\tR2W_FACTOR: 0x%01x (Write %d times read)\n",
+			printf("\tR2W_FACTOR: 0x%01x (Write %u times read)\n",
 			       r2w_factor, r2w_factor);
 			if (r2w_factor != 0x02)
 				printf("Warn: Invalid R2W_FACTOR (should be 0x02)\n");
@@ -1199,7 +1199,7 @@ void print_sd_csd(struct config *config, char *csd)
 		else
 			printf("%.2fbyte", memory_capacity * 1.0);
 
-		printf(" (%lld bytes, %lld sectors, %d bytes each)\n",
+		printf(" (%llu bytes, %llu sectors, %d bytes each)\n",
 		       memory_capacity, blocks, block_size);
 	} else {
 		unsigned long long blocks = 0;
@@ -1262,7 +1262,7 @@ void print_sd_csd(struct config *config, char *csd)
 		else
 			printf("%.2fbyte", memory_capacity * 1.0);
 
-		printf(" (%lld bytes, %lld sectors, %d bytes each)\n",
+		printf(" (%llu bytes, %llu sectors, %d bytes each)\n",
 		       memory_capacity, blocks, block_size);
 	}
 }
@@ -1456,7 +1456,7 @@ void print_mmc_csd(struct config *config, char *csd)
 			break;
 		}
 
-		printf("\tNSAC: %d clocks\n", nsac);
+		printf("\tNSAC: %u clocks\n", nsac);
 		printf("\tTRAN_SPEED: 0x%02x (", tran_speed);
 		switch (tran_speed_timevalue) {
 		case 0x0:
@@ -1764,10 +1764,10 @@ void print_mmc_csd(struct config *config, char *csd)
 
 		printf("\tC_SIZE_MULT: 0x%01x\n", c_size_mult);
 		printf("\tERASE_GRP_SIZE: 0x%02x\n", erase_grp_size);
-		printf("\tERASE_GRP_MULT: 0x%02x (%d write blocks/erase group)\n",
+		printf("\tERASE_GRP_MULT: 0x%02x (%u write blocks/erase group)\n",
 		       erase_grp_mult, (erase_grp_size + 1) *
 		       (erase_grp_mult + 1));
-		printf("\tWP_GRP_SIZE: 0x%02x (%d blocks/write protect group)\n",
+		printf("\tWP_GRP_SIZE: 0x%02x (%u blocks/write protect group)\n",
 		       wp_grp_size, wp_grp_size + 1);
 		printf("\tWP_GRP_ENABLE: 0x%01x\n", wp_grp_enable);
 
@@ -1784,7 +1784,7 @@ void print_mmc_csd(struct config *config, char *csd)
 			break;
 		}
 
-		printf("\tR2W_FACTOR: 0x%01x (Write %d times read)\n",
+		printf("\tR2W_FACTOR: 0x%01x (Write %u times read)\n",
 		       r2w_factor, r2w_factor);
 
 		printf("\tWRITE_BL_LEN: 0x%01x (", write_bl_len);
@@ -1914,7 +1914,7 @@ void print_mmc_csd(struct config *config, char *csd)
 		else
 			printf("%.2fbyte", memory_capacity * 1.0);
 
-		printf(" (%lld bytes, %lld sectors, %d bytes each)\n",
+		printf(" (%llu bytes, %llu sectors, %d bytes each)\n",
 		       memory_capacity, blocks, block_size);
 	} else {
 		int mult;
@@ -1991,7 +1991,7 @@ void print_mmc_csd(struct config *config, char *csd)
 			printf("%.2fKbyte", memory_capacity / (1024.0));
 		else
 			printf("%.2fbyte", memory_capacity * 1.0);
-		printf(" (%lld bytes, %lld sectors, %d bytes each)\n",
+		printf(" (%llu bytes, %llu sectors, %d bytes each)\n",
 		       memory_capacity, blocks, block_size);
 	}
 }
