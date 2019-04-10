@@ -2424,12 +2424,13 @@ int do_ffu(int nargs, char **argv)
 	int sect_done = 0, retry = 3, ret = -EINVAL;
 	unsigned int sect_size;
 	__u8 ext_csd[512];
-	__u8 *buf;
+	__u8 *buf = NULL;
 	__u32 arg;
 	off_t fw_size;
 	ssize_t chunk_size;
 	char *device;
-	struct mmc_ioc_multi_cmd *multi_cmd;
+	struct mmc_ioc_multi_cmd *multi_cmd = NULL;
+	__u32 blocks = 1;
 
 	if (nargs != 3) {
 		fprintf(stderr, "Usage: ffu <image name> </path/to/mmcblkX> \n");
@@ -2447,14 +2448,6 @@ int do_ffu(int nargs, char **argv)
 		perror("image open failed");
 		close(dev_fd);
 		exit(1);
-	}
-
-	buf = malloc(512);
-	multi_cmd = calloc(1, sizeof(struct mmc_ioc_multi_cmd) +
-				3 * sizeof(struct mmc_ioc_cmd));
-	if (!buf || !multi_cmd) {
-		perror("failed to allocate memory");
-		goto out;
 	}
 
 	ret = read_extcsd(dev_fd, ext_csd);
@@ -2481,9 +2474,17 @@ int do_ffu(int nargs, char **argv)
 	}
 
 	fw_size = lseek(img_fd, 0, SEEK_END);
+	if (fw_size > MMC_IOC_MAX_BYTES || fw_size == 0) {
+		fprintf(stderr, "Wrong firmware size");
+		goto out;
+	}
 
-	if (fw_size == 0) {
-		fprintf(stderr, "Firmware image is empty");
+	/* allocate maximum required */
+	buf = malloc(fw_size);
+	multi_cmd = calloc(1, sizeof(struct mmc_ioc_multi_cmd) +
+				4 * sizeof(struct mmc_ioc_cmd));
+	if (!buf || !multi_cmd) {
+		perror("failed to allocate memory");
 		goto out;
 	}
 
@@ -2493,14 +2494,19 @@ int do_ffu(int nargs, char **argv)
 		goto out;
 	}
 
+	/* calculate required fw blocks for CMD25 */
+	blocks = fw_size / sect_size;
+
 	/* set CMD ARG */
 	arg = ext_csd[EXT_CSD_FFU_ARG_0] |
 		ext_csd[EXT_CSD_FFU_ARG_1] << 8 |
 		ext_csd[EXT_CSD_FFU_ARG_2] << 16 |
 		ext_csd[EXT_CSD_FFU_ARG_3] << 24;
 
+	/* prepare multi_cmd for FFU based on cmd to be used */
+
 	/* prepare multi_cmd to be sent */
-	multi_cmd->num_of_cmds = 3;
+	multi_cmd->num_of_cmds = 4;
 
 	/* put device into ffu mode */
 	multi_cmd->cmds[0].opcode = MMC_SWITCH;
@@ -2511,37 +2517,42 @@ int do_ffu(int nargs, char **argv)
 	multi_cmd->cmds[0].flags = MMC_RSP_SPI_R1B | MMC_RSP_R1B | MMC_CMD_AC;
 	multi_cmd->cmds[0].write_flag = 1;
 
+	/* send block count */
+	multi_cmd->cmds[1].opcode = MMC_SET_BLOCK_COUNT;
+	multi_cmd->cmds[1].arg = blocks;
+	multi_cmd->cmds[1].flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_AC;
+
 	/* send image chunk */
-	multi_cmd->cmds[1].opcode = MMC_WRITE_BLOCK;
-	multi_cmd->cmds[1].blksz = sect_size;
-	multi_cmd->cmds[1].blocks = 1;
-	multi_cmd->cmds[1].arg = arg;
-	multi_cmd->cmds[1].flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_ADTC;
-	multi_cmd->cmds[1].write_flag = 1;
-	mmc_ioc_cmd_set_data(multi_cmd->cmds[1], buf);
+	multi_cmd->cmds[2].opcode = MMC_WRITE_MULTIPLE_BLOCK;
+	multi_cmd->cmds[2].blksz = sect_size;
+	multi_cmd->cmds[2].blocks = blocks;
+	multi_cmd->cmds[2].arg = arg;
+	multi_cmd->cmds[2].flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_ADTC;
+	multi_cmd->cmds[2].write_flag = 1;
+	mmc_ioc_cmd_set_data(multi_cmd->cmds[2], buf);
 
 	/* return device into normal mode */
-	multi_cmd->cmds[2].opcode = MMC_SWITCH;
-	multi_cmd->cmds[2].arg = (MMC_SWITCH_MODE_WRITE_BYTE << 24) |
+	multi_cmd->cmds[3].opcode = MMC_SWITCH;
+	multi_cmd->cmds[3].arg = (MMC_SWITCH_MODE_WRITE_BYTE << 24) |
 			(EXT_CSD_MODE_CONFIG << 16) |
 			(EXT_CSD_NORMAL_MODE << 8) |
 			EXT_CSD_CMD_SET_NORMAL;
-	multi_cmd->cmds[2].flags = MMC_RSP_SPI_R1B | MMC_RSP_R1B | MMC_CMD_AC;
-	multi_cmd->cmds[2].write_flag = 1;
+	multi_cmd->cmds[3].flags = MMC_RSP_SPI_R1B | MMC_RSP_R1B | MMC_CMD_AC;
+	multi_cmd->cmds[3].write_flag = 1;
 
 do_retry:
 	/* read firmware chunk */
 	lseek(img_fd, 0, SEEK_SET);
-	chunk_size = read(img_fd, buf, 512);
+	chunk_size = read(img_fd, buf, fw_size);
 
-	while (chunk_size > 0) {
+	if (chunk_size > 0) {
 		/* send ioctl with multi-cmd */
 		ret = ioctl(dev_fd, MMC_IOC_MULTI_CMD, multi_cmd);
 
 		if (ret) {
 			perror("Multi-cmd ioctl");
 			/* In case multi-cmd ioctl failed before exiting from ffu mode */
-			ioctl(dev_fd, MMC_IOC_CMD, &multi_cmd->cmds[2]);
+			ioctl(dev_fd, MMC_IOC_CMD, &multi_cmd->cmds[3]);
 			goto out;
 		}
 
@@ -2568,9 +2579,6 @@ do_retry:
 		} else {
 			fprintf(stderr, "Programmed %d/%jd bytes\r", sect_done * sect_size, (intmax_t)fw_size);
 		}
-
-		/* read the next firmware chunk (if any) */
-		chunk_size = read(img_fd, buf, 512);
 	}
 
 	if ((sect_done * sect_size) == fw_size) {
@@ -2607,7 +2615,7 @@ do_retry:
 		if (ret) {
 			perror("Multi-cmd ioctl failed setting install mode");
 			/* In case multi-cmd ioctl failed before exiting from ffu mode */
-			ioctl(dev_fd, MMC_IOC_CMD, &multi_cmd->cmds[2]);
+			ioctl(dev_fd, MMC_IOC_CMD, &multi_cmd->cmds[3]);
 			goto out;
 		}
 
