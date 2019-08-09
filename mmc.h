@@ -118,6 +118,7 @@
 #define EXT_CSD_MODE_CONFIG		30
 #define EXT_CSD_MODE_OPERATION_CODES	29	/* W */
 #define EXT_CSD_FFU_STATUS		26	/* R */
+#define EXT_CSD_SECURE_REMOVAL_TYPE	16	/* R/W */
 #define EXT_CSD_CMDQ_MODE_EN		15	/* R/W */
 
 /*
@@ -134,6 +135,8 @@
 /*
  * EXT_CSD field definitions
  */
+#define EXT_CSD_CONFIG_SECRM_TYPE	(0x30)
+#define EXT_CSD_SUPPORTED_SECRM_TYPE	(0x0f)
 #define EXT_CSD_FFU_INSTALL		(0x01)
 #define EXT_CSD_FFU_MODE		(0x01)
 #define EXT_CSD_NORMAL_MODE		(0x00)

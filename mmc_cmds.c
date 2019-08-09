@@ -1774,6 +1774,38 @@ int do_read_extcsd(int nargs, char **argv)
 			ext_csd[EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_B]);
 		printf("eMMC Pre EOL information [EXT_CSD_PRE_EOL_INFO]: 0x%02x\n",
 			ext_csd[EXT_CSD_PRE_EOL_INFO]);
+		reg = ext_csd[EXT_CSD_SECURE_REMOVAL_TYPE];
+		printf("Secure Removal Type [SECURE_REMOVAL_TYPE]: 0x%02x\n", reg);
+		printf(" information is configured to be removed ");
+		/* Bit [5:4]: Configure Secure Removal Type */
+		switch ((reg & EXT_CSD_CONFIG_SECRM_TYPE) >> 4) {
+			case 0x0:
+				printf("by an erase of the physical memory\n");
+				break;
+			case 0x1:
+				printf("by an overwriting the addressed locations"
+				       " with a character followed by an erase\n");
+				break;
+			case 0x2:
+				printf("by an overwriting the addressed locations"
+				       " with a character, its complement, then a random character\n");
+				break;
+			case 0x3:
+				printf("using a vendor defined\n");
+				break;
+		}
+		/* Bit [3:0]: Supported Secure Removal Type */
+		printf(" Supported Secure Removal Type:\n");
+		if (reg & 0x01)
+			printf("  information removed by an erase of the physical memory\n");
+		if (reg & 0x02)
+			printf("  information removed by an overwriting the addressed locations"
+			       " with a character followed by an erase\n");
+		if (reg & 0x04)
+			printf("  information removed by an overwriting the addressed locations"
+			       " with a character, its complement, then a random character\n");
+		if (reg & 0x08)
+			printf("  information removed using a vendor defined\n");
 	}
 
 	if (ext_csd_rev >= 8) {
