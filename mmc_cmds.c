@@ -1982,7 +1982,9 @@ static int do_rpmb_op(int fd,
 	u_int16_t rpmb_type;
 	struct mmc_ioc_multi_cmd *mioc;
 	struct mmc_ioc_cmd *ioc;
-	struct rpmb_frame frame_status = {0};
+	struct rpmb_frame frame_status;
+
+	memset(&frame_status, 0, sizeof(frame_status));
 
 	if (!frame_in || !frame_out || !out_cnt)
 		return -EINVAL;
