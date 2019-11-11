@@ -131,9 +131,12 @@ static struct Command commands[] = {
 	  "<boot_bus_width> must be \"x1|x4|x8\"",
 	  NULL
 	},
-	{ do_write_bkops_en, -1,
-	  "bkops enable", "<device>\n"
-		"Enable the eMMC BKOPS feature on <device>.\nNOTE!  This is a one-time programmable (unreversible) change.",
+	{ do_write_bkops_en, -2,
+	  "bkops_en", "<auto|manual> <device>\n"
+		"Enable the eMMC BKOPS feature on <device>.\n"
+		"The auto (AUTO_EN) setting is only supported on eMMC 5.0 or newer.\n"
+		"Setting auto won't have any effect if manual is set.\n"
+		"NOTE!  Setting manual (MANUAL_EN) is one-time programmable (unreversible) change.",
 	  NULL
 	},
 	{ do_hwreset_en, -1,

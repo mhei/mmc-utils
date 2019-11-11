@@ -792,13 +792,15 @@ int do_write_bkops_en(int nargs, char **argv)
 	__u8 ext_csd[512], value = 0;
 	int fd, ret;
 	char *device;
+	char *en_type;
 
-	if (nargs != 2) {
-	       fprintf(stderr, "Usage: mmc bkops enable </path/to/mmcblkX>\n");
-	       exit(1);
+	if (nargs != 3) {
+		fprintf(stderr, "Usage: mmc bkops_en <auto|manual> </path/to/mmcblkX>\n");
+		exit(1);
 	}
 
-	device = argv[1];
+	en_type = argv[1];
+	device = argv[2];
 
 	fd = open(device, O_RDWR);
 	if (fd < 0) {
@@ -812,12 +814,19 @@ int do_write_bkops_en(int nargs, char **argv)
 		exit(1);
 	}
 
-	if (!(ext_csd[EXT_CSD_BKOPS_SUPPORT] & 0x1)) {
-		fprintf(stderr, "%s doesn't support BKOPS\n", device);
+	if (strcmp(en_type, "auto") == 0) {
+		if (ext_csd[EXT_CSD_REV] < EXT_CSD_REV_V5_0) {
+			fprintf(stderr, "%s doesn't support AUTO_EN in the BKOPS_EN register\n", device);
+			exit(1);
+		}
+		ret = write_extcsd_value(fd, EXT_CSD_BKOPS_EN, BKOPS_AUTO_ENABLE);
+	} else if (strcmp(en_type, "manual") == 0) {
+		ret = write_extcsd_value(fd, EXT_CSD_BKOPS_EN, BKOPS_MAN_ENABLE);
+	} else {
+		fprintf(stderr, "%s invalid mode for BKOPS_EN requested: %s. Valid options: auto or manual\n", en_type, device);
 		exit(1);
 	}
 
-	ret = write_extcsd_value(fd, EXT_CSD_BKOPS_EN, BKOPS_ENABLE);
 	if (ret) {
 		fprintf(stderr, "Could not write 0x%02x to EXT_CSD[%d] in %s\n",
 			value, EXT_CSD_BKOPS_EN, device);
