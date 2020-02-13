@@ -1427,8 +1427,8 @@ int do_read_extcsd(int nargs, char **argv)
 		printf("Power off notification [POWER_OFF_LONG_TIME: 0x%02x]\n",
 			ext_csd[247]);
 		printf("Cache Size [CACHE_SIZE] is %d KiB\n",
-			ext_csd[249] << 0 | (ext_csd[250] << 8) |
-			(ext_csd[251] << 16) | (ext_csd[252] << 24));
+			(ext_csd[249] << 0 | (ext_csd[250] << 8) |
+			(ext_csd[251] << 16) | (ext_csd[252] << 24)) / 8);
 	}
 
 	/* A441: Reserved [501:247]
