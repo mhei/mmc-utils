@@ -202,11 +202,19 @@ static void print_writeprotect_boot_status(__u8 *ext_csd)
 		else
 			printf("possible\n");
 
-		printf(" ro lock status: ");
-		if (reg & EXT_CSD_BOOT_WP_B_PWR_WP_EN)
-			printf("locked until next power on\n");
-		else if (reg & EXT_CSD_BOOT_WP_B_PERM_WP_EN)
+		reg = ext_csd[EXT_CSD_BOOT_WP_STATUS];
+		printf(" partition 0 ro lock status: ");
+		if (reg & EXT_CSD_BOOT_WP_S_AREA_0_PERM)
 			printf("locked permanently\n");
+		else if (reg & EXT_CSD_BOOT_WP_S_AREA_0_PWR)
+			printf("locked until next power on\n");
+		else
+			printf("not locked\n");
+		printf(" partition 1 ro lock status: ");
+		if (reg & EXT_CSD_BOOT_WP_S_AREA_1_PERM)
+			printf("locked permanently\n");
+		else if (reg & EXT_CSD_BOOT_WP_S_AREA_1_PWR)
+			printf("locked until next power on\n");
 		else
 			printf("not locked\n");
 	}
@@ -260,18 +268,42 @@ int do_writeprotect_boot_set(int nargs, char **argv)
 	__u8 ext_csd[512], value;
 	int fd, ret;
 	char *device;
+	char *end;
+	int argi = 1;
+	int permanent = 0;
+	int partition = -1;
 
-	if (nargs != 2) {
-		fprintf(stderr, "Usage: mmc writeprotect boot set </path/to/mmcblkX>\n");
+#ifdef DANGEROUS_COMMANDS_ENABLED
+	if (!strcmp(argv[argi], "-p")){
+		permanent = 1;
+		argi++;
+	}
+#endif
+
+	if (nargs < 1 + argi ||  nargs > 2 + argi) {
+		fprintf(stderr, "Usage: mmc writeprotect boot set "
+#ifdef DANGEROUS_COMMANDS_ENABLED
+			"[-p] "
+#endif
+			"</path/to/mmcblkX> [0|1]\n");
 		exit(1);
 	}
 
-	device = argv[1];
+	device = argv[argi++];
 
 	fd = open(device, O_RDWR);
 	if (fd < 0) {
 		perror("open");
 		exit(1);
+	}
+
+	if (nargs == 1 + argi) {
+		partition = strtoul(argv[argi], &end, 0);
+		if (*end != '\0' || !(partition == 0 || partition == 1)) {
+			fprintf(stderr, "Invalid partition number (must be 0 or 1): %s\n",
+				argv[argi]);
+			exit(1);
+		}
 	}
 
 	ret = read_extcsd(fd, ext_csd);
@@ -280,8 +312,34 @@ int do_writeprotect_boot_set(int nargs, char **argv)
 		exit(1);
 	}
 
-	value = ext_csd[EXT_CSD_BOOT_WP] |
-		EXT_CSD_BOOT_WP_B_PWR_WP_EN;
+	value = ext_csd[EXT_CSD_BOOT_WP];
+	/*
+	 * If permanent protection is already on for one partition and we're
+	 * trying to enable power-reset protection for the other we need to make
+	 * sure the selection bit for permanent protection still points to the
+	 * former or we'll accidentally permanently protect the latter.
+	 */
+	if ((value & EXT_CSD_BOOT_WP_B_PERM_WP_EN) && !permanent) {
+		if (ext_csd[EXT_CSD_BOOT_WP_STATUS] &
+		    EXT_CSD_BOOT_WP_S_AREA_1_PERM) {
+			value |= EXT_CSD_BOOT_WP_B_PERM_WP_SEC_SEL;
+			if (partition != 1)
+				partition = 0;
+		} else {
+			/* PERM_WP_SEC_SEL cleared -> pointing to partition 0 */
+			if (partition != 0)
+				partition = 1;
+		}
+	}
+	if (partition != -1) {
+		value |= EXT_CSD_BOOT_WP_B_SEC_WP_SEL;
+		if (partition == 1)
+			value |= permanent ? EXT_CSD_BOOT_WP_B_PERM_WP_SEC_SEL
+					   : EXT_CSD_BOOT_WP_B_PWR_WP_SEC_SEL;
+	}
+	value |= permanent ? EXT_CSD_BOOT_WP_B_PERM_WP_EN
+			   : EXT_CSD_BOOT_WP_B_PWR_WP_EN;
+
 	ret = write_extcsd_value(fd, EXT_CSD_BOOT_WP, value);
 	if (ret) {
 		fprintf(stderr, "Could not write 0x%02x to "

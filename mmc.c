@@ -64,9 +64,20 @@ static struct Command commands[] = {
 	  NULL
 	},
 	{ do_writeprotect_boot_set, -1,
-	  "writeprotect boot set", "<device>\n"
-		"Set the boot partitions write protect status for <device>.\nThis sets the eMMC boot partitions to be write-protected until\nthe next boot.",
-	  NULL
+	  "writeprotect boot set",
+#ifdef DANGEROUS_COMMANDS_ENABLED
+		"[-p] "
+#endif /* DANGEROUS_COMMANDS_ENABLED */
+		"<device> [<number>]\n"
+		"Set the boot partition write protect status for <device>.\n"
+		"If <number> is passed (0 or 1), only protect that particular\n"
+		"eMMC boot partition, otherwise protect both. It will be\n"
+		"write-protected until the next boot.\n"
+#ifdef DANGEROUS_COMMANDS_ENABLED
+		"  -p  Protect partition permanently instead.\n"
+		"      NOTE! -p is a one-time programmable (unreversible) change.\n"
+#endif /* DANGEROUS_COMMANDS_ENABLED */
+	  , NULL
 	},
 	{ do_writeprotect_user_set, -4,
 	  "writeprotect user set", "<type>" "<start block>" "<blocks>" "<device>\n"
