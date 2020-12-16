@@ -1922,7 +1922,7 @@ static int do_rpmb_op(int fd,
 
 	/* prepare arguments for MMC_IOC_MULTI_CMD ioctl */
 	mioc = (struct mmc_ioc_multi_cmd *)
-		malloc(sizeof (struct mmc_ioc_multi_cmd) +
+		calloc(1, sizeof (struct mmc_ioc_multi_cmd) +
 		       RPMB_MULTI_CMD_MAX_CMDS * sizeof (struct mmc_ioc_cmd));
 	if (!mioc) {
 		return -ENOMEM;
