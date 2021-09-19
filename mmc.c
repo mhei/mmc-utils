@@ -64,9 +64,20 @@ static struct Command commands[] = {
 	  NULL
 	},
 	{ do_writeprotect_boot_set, -1,
-	  "writeprotect boot set", "<device>\n"
-		"Set the boot partitions write protect status for <device>.\nThis sets the eMMC boot partitions to be write-protected until\nthe next boot.",
-	  NULL
+	  "writeprotect boot set",
+#ifdef DANGEROUS_COMMANDS_ENABLED
+		"[-p] "
+#endif /* DANGEROUS_COMMANDS_ENABLED */
+		"<device> [<number>]\n"
+		"Set the boot partition write protect status for <device>.\n"
+		"If <number> is passed (0 or 1), only protect that particular\n"
+		"eMMC boot partition, otherwise protect both. It will be\n"
+		"write-protected until the next boot.\n"
+#ifdef DANGEROUS_COMMANDS_ENABLED
+		"  -p  Protect partition permanently instead.\n"
+		"      NOTE! -p is a one-time programmable (unreversible) change.\n"
+#endif /* DANGEROUS_COMMANDS_ENABLED */
+	  , NULL
 	},
 	{ do_writeprotect_user_set, -4,
 	  "writeprotect user set", "<type>" "<start block>" "<blocks>" "<device>\n"
@@ -120,9 +131,12 @@ static struct Command commands[] = {
 	  "<boot_bus_width> must be \"x1|x4|x8\"",
 	  NULL
 	},
-	{ do_write_bkops_en, -1,
-	  "bkops enable", "<device>\n"
-		"Enable the eMMC BKOPS feature on <device>.\nNOTE!  This is a one-time programmable (unreversible) change.",
+	{ do_write_bkops_en, -2,
+	  "bkops_en", "<auto|manual> <device>\n"
+		"Enable the eMMC BKOPS feature on <device>.\n"
+		"The auto (AUTO_EN) setting is only supported on eMMC 5.0 or newer.\n"
+		"Setting auto won't have any effect if manual is set.\n"
+		"NOTE!  Setting manual (MANUAL_EN) is one-time programmable (unreversible) change.",
 	  NULL
 	},
 	{ do_hwreset_en, -1,
@@ -214,6 +228,14 @@ static struct Command commands[] = {
 	  "ffu", "<image name> <device>\n"
 		"Run Field Firmware Update with <image name> on <device>.\n",
 	  NULL
+	},
+	{ do_erase, -4,
+	"erase", "<type> " "<start address> " "<end address> " "<device>\n"
+		"Send Erase CMD38 with specific argument to the <device>\n\n"
+		"NOTE!: This will delete all user data in the specified region of the device\n"
+		"<type> must be: legacy | discard | secure-erase | "
+		"secure-trim1 | secure-trim2 | trim \n",
+	NULL
 	},
 	{ 0, 0, 0, 0 }
 };

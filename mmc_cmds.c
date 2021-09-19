@@ -202,11 +202,19 @@ static void print_writeprotect_boot_status(__u8 *ext_csd)
 		else
 			printf("possible\n");
 
-		printf(" ro lock status: ");
-		if (reg & EXT_CSD_BOOT_WP_B_PWR_WP_EN)
-			printf("locked until next power on\n");
-		else if (reg & EXT_CSD_BOOT_WP_B_PERM_WP_EN)
+		reg = ext_csd[EXT_CSD_BOOT_WP_STATUS];
+		printf(" partition 0 ro lock status: ");
+		if (reg & EXT_CSD_BOOT_WP_S_AREA_0_PERM)
 			printf("locked permanently\n");
+		else if (reg & EXT_CSD_BOOT_WP_S_AREA_0_PWR)
+			printf("locked until next power on\n");
+		else
+			printf("not locked\n");
+		printf(" partition 1 ro lock status: ");
+		if (reg & EXT_CSD_BOOT_WP_S_AREA_1_PERM)
+			printf("locked permanently\n");
+		else if (reg & EXT_CSD_BOOT_WP_S_AREA_1_PWR)
+			printf("locked until next power on\n");
 		else
 			printf("not locked\n");
 	}
@@ -261,18 +269,42 @@ int do_writeprotect_boot_set(int nargs, char **argv)
 	__u8 ext_csd[512], value;
 	int fd, ret;
 	char *device;
+	char *end;
+	int argi = 1;
+	int permanent = 0;
+	int partition = -1;
 
-	if (nargs != 2) {
-		fprintf(stderr, "Usage: mmc writeprotect boot set </path/to/mmcblkX>\n");
+#ifdef DANGEROUS_COMMANDS_ENABLED
+	if (!strcmp(argv[argi], "-p")){
+		permanent = 1;
+		argi++;
+	}
+#endif
+
+	if (nargs < 1 + argi ||  nargs > 2 + argi) {
+		fprintf(stderr, "Usage: mmc writeprotect boot set "
+#ifdef DANGEROUS_COMMANDS_ENABLED
+			"[-p] "
+#endif
+			"</path/to/mmcblkX> [0|1]\n");
 		exit(1);
 	}
 
-	device = argv[1];
+	device = argv[argi++];
 
 	fd = open(device, O_RDWR);
 	if (fd < 0) {
 		perror("open");
 		exit(1);
+	}
+
+	if (nargs == 1 + argi) {
+		partition = strtoul(argv[argi], &end, 0);
+		if (*end != '\0' || !(partition == 0 || partition == 1)) {
+			fprintf(stderr, "Invalid partition number (must be 0 or 1): %s\n",
+				argv[argi]);
+			exit(1);
+		}
 	}
 
 	ret = read_extcsd(fd, ext_csd);
@@ -281,8 +313,34 @@ int do_writeprotect_boot_set(int nargs, char **argv)
 		exit(1);
 	}
 
-	value = ext_csd[EXT_CSD_BOOT_WP] |
-		EXT_CSD_BOOT_WP_B_PWR_WP_EN;
+	value = ext_csd[EXT_CSD_BOOT_WP];
+	/*
+	 * If permanent protection is already on for one partition and we're
+	 * trying to enable power-reset protection for the other we need to make
+	 * sure the selection bit for permanent protection still points to the
+	 * former or we'll accidentally permanently protect the latter.
+	 */
+	if ((value & EXT_CSD_BOOT_WP_B_PERM_WP_EN) && !permanent) {
+		if (ext_csd[EXT_CSD_BOOT_WP_STATUS] &
+		    EXT_CSD_BOOT_WP_S_AREA_1_PERM) {
+			value |= EXT_CSD_BOOT_WP_B_PERM_WP_SEC_SEL;
+			if (partition != 1)
+				partition = 0;
+		} else {
+			/* PERM_WP_SEC_SEL cleared -> pointing to partition 0 */
+			if (partition != 0)
+				partition = 1;
+		}
+	}
+	if (partition != -1) {
+		value |= EXT_CSD_BOOT_WP_B_SEC_WP_SEL;
+		if (partition == 1)
+			value |= permanent ? EXT_CSD_BOOT_WP_B_PERM_WP_SEC_SEL
+					   : EXT_CSD_BOOT_WP_B_PWR_WP_SEC_SEL;
+	}
+	value |= permanent ? EXT_CSD_BOOT_WP_B_PERM_WP_EN
+			   : EXT_CSD_BOOT_WP_B_PWR_WP_EN;
+
 	ret = write_extcsd_value(fd, EXT_CSD_BOOT_WP, value);
 	if (ret) {
 		fprintf(stderr, "Could not write 0x%02x to "
@@ -740,13 +798,15 @@ int do_write_bkops_en(int nargs, char **argv)
 	__u8 ext_csd[512], value = 0;
 	int fd, ret;
 	char *device;
+	char *en_type;
 
-	if (nargs != 2) {
-	       fprintf(stderr, "Usage: mmc bkops enable </path/to/mmcblkX>\n");
-	       exit(1);
+	if (nargs != 3) {
+		fprintf(stderr, "Usage: mmc bkops_en <auto|manual> </path/to/mmcblkX>\n");
+		exit(1);
 	}
 
-	device = argv[1];
+	en_type = argv[1];
+	device = argv[2];
 
 	fd = open(device, O_RDWR);
 	if (fd < 0) {
@@ -760,12 +820,19 @@ int do_write_bkops_en(int nargs, char **argv)
 		exit(1);
 	}
 
-	if (!(ext_csd[EXT_CSD_BKOPS_SUPPORT] & 0x1)) {
-		fprintf(stderr, "%s doesn't support BKOPS\n", device);
+	if (strcmp(en_type, "auto") == 0) {
+		if (ext_csd[EXT_CSD_REV] < EXT_CSD_REV_V5_0) {
+			fprintf(stderr, "%s doesn't support AUTO_EN in the BKOPS_EN register\n", device);
+			exit(1);
+		}
+		ret = write_extcsd_value(fd, EXT_CSD_BKOPS_EN, BKOPS_AUTO_ENABLE);
+	} else if (strcmp(en_type, "manual") == 0) {
+		ret = write_extcsd_value(fd, EXT_CSD_BKOPS_EN, BKOPS_MAN_ENABLE);
+	} else {
+		fprintf(stderr, "%s invalid mode for BKOPS_EN requested: %s. Valid options: auto or manual\n", en_type, device);
 		exit(1);
 	}
 
-	ret = write_extcsd_value(fd, EXT_CSD_BKOPS_EN, BKOPS_ENABLE);
 	if (ret) {
 		fprintf(stderr, "Could not write 0x%02x to EXT_CSD[%d] in %s\n",
 			value, EXT_CSD_BKOPS_EN, device);
@@ -1325,6 +1392,7 @@ int do_read_extcsd(int nargs, char **argv)
 	__u32 regl;
 	int fd, ret;
 	char *device;
+	char lbuf[10];
 	const char *str;
 
 	if (nargs != 2) {
@@ -1766,8 +1834,9 @@ int do_read_extcsd(int nargs, char **argv)
 	}
 
 	if (ext_csd_rev >= 7) {
-		printf("eMMC Firmware Version: %s\n",
-			(char*)&ext_csd[EXT_CSD_FIRMWARE_VERSION]);
+                memset(lbuf, 0, sizeof(lbuf));
+		strncpy(lbuf, (char*)&ext_csd[EXT_CSD_FIRMWARE_VERSION], 8);
+		printf("eMMC Firmware Version: %s\n", lbuf);
 		printf("eMMC Life Time Estimation A [EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_A]: 0x%02x\n",
 			ext_csd[EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_A]);
 		printf("eMMC Life Time Estimation B [EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_B]: 0x%02x\n",
@@ -1924,14 +1993,16 @@ static int do_rpmb_op(int fd,
 	u_int16_t rpmb_type;
 	struct mmc_ioc_multi_cmd *mioc;
 	struct mmc_ioc_cmd *ioc;
-	struct rpmb_frame frame_status = {0};
+	struct rpmb_frame frame_status;
+
+	memset(&frame_status, 0, sizeof(frame_status));
 
 	if (!frame_in || !frame_out || !out_cnt)
 		return -EINVAL;
 
 	/* prepare arguments for MMC_IOC_MULTI_CMD ioctl */
 	mioc = (struct mmc_ioc_multi_cmd *)
-		malloc(sizeof (struct mmc_ioc_multi_cmd) +
+		calloc(1, sizeof (struct mmc_ioc_multi_cmd) +
 		       RPMB_MULTI_CMD_MAX_CMDS * sizeof (struct mmc_ioc_cmd));
 	if (!mioc) {
 		return -ENOMEM;
@@ -2444,6 +2515,150 @@ int do_cache_dis(int nargs, char **argv)
 {
 	return do_cache_ctrl(0, nargs, argv);
 }
+
+static int erase(int dev_fd, __u32 argin, __u32 start, __u32 end)
+{
+	int ret = 0;
+	struct mmc_ioc_multi_cmd *multi_cmd;
+	__u8 ext_csd[512];
+
+
+	ret = read_extcsd(dev_fd, ext_csd);
+	if (ret) {
+		fprintf(stderr, "Could not read EXT_CSD\n");
+		exit(1);
+	}
+	if (ext_csd[EXT_CSD_ERASE_GROUP_DEF] & 0x01) {
+	  fprintf(stderr, "High Capacity Erase Unit Size=%d bytes\n" \
+                          "High Capacity Erase Timeout=%d ms\n" \
+                          "High Capacity Write Protect Group Size=%d bytes\n",
+		           ext_csd[224]*0x80000,
+		           ext_csd[223]*300,
+                           ext_csd[221]*ext_csd[224]*0x80000);
+	}
+
+	multi_cmd = calloc(1, sizeof(struct mmc_ioc_multi_cmd) +
+			   3 * sizeof(struct mmc_ioc_cmd));
+	if (!multi_cmd) {
+		perror("Failed to allocate memory");
+		return -ENOMEM;
+	}
+
+	multi_cmd->num_of_cmds = 3;
+	/* Set erase start address */
+	multi_cmd->cmds[0].opcode = MMC_ERASE_GROUP_START;
+	multi_cmd->cmds[0].arg = start;
+	multi_cmd->cmds[0].flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_AC;
+	multi_cmd->cmds[0].write_flag = 1;
+
+	/* Set erase end address */
+	multi_cmd->cmds[1].opcode = MMC_ERASE_GROUP_END;
+	multi_cmd->cmds[1].arg = end;
+	multi_cmd->cmds[1].flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_AC;
+	multi_cmd->cmds[1].write_flag = 1;
+
+	/* Send Erase Command */
+	multi_cmd->cmds[2].opcode = MMC_ERASE;
+	multi_cmd->cmds[2].arg = argin;
+	multi_cmd->cmds[2].cmd_timeout_ms = 300*255*255;
+	multi_cmd->cmds[2].flags = MMC_RSP_SPI_R1B | MMC_RSP_R1B | MMC_CMD_AC;
+	multi_cmd->cmds[2].write_flag = 1;
+
+	/* send erase cmd with multi-cmd */
+	ret = ioctl(dev_fd, MMC_IOC_MULTI_CMD, multi_cmd);
+	if (ret)
+		perror("Erase multi-cmd ioctl");
+
+	free(multi_cmd);
+	return ret;
+}
+
+int do_erase(int nargs, char **argv)
+{
+	int dev_fd, ret;
+	char *print_str;
+	__u8 ext_csd[512], checkup_mask = 0;
+	__u32 arg, start, end;
+
+	if (nargs != 5) {
+		fprintf(stderr, "Usage: erase <type> <start addr> <end addr> </path/to/mmcblkX>\n");
+		exit(1);
+	}
+
+	if (strstr(argv[2], "0x") || strstr(argv[2], "0X"))
+		start = strtol(argv[2], NULL, 16);
+	else
+		start = strtol(argv[2], NULL, 10);
+
+	if (strstr(argv[3], "0x") || strstr(argv[3], "0X"))
+		end = strtol(argv[3], NULL, 16);
+	else
+		end = strtol(argv[3], NULL, 10);
+
+	if (end < start) {
+		fprintf(stderr, "erase start [0x%08x] > erase end [0x%08x]\n",
+			start, end);
+		exit(1);
+	}
+
+	if (strcmp(argv[1], "legacy") == 0) {
+		arg = 0x00000000;
+		print_str = "Legacy Erase";
+	} else if (strcmp(argv[1], "discard") == 0) {
+		arg = 0x00000003;
+		print_str = "Discard";
+	} else if (strcmp(argv[1], "secure-erase") == 0) {
+		print_str = "Secure Erase";
+		checkup_mask = EXT_CSD_SEC_ER_EN;
+		arg = 0x80000000;
+	} else if (strcmp(argv[1], "secure-trim1") == 0) {
+		print_str = "Secure Trim Step 1";
+		checkup_mask = EXT_CSD_SEC_ER_EN | EXT_CSD_SEC_GB_CL_EN;
+		arg = 0x80000001;
+	} else if (strcmp(argv[1], "secure-trim2") == 0) {
+		print_str = "Secure Trim Step 2";
+		checkup_mask = EXT_CSD_SEC_ER_EN | EXT_CSD_SEC_GB_CL_EN;
+		arg = 0x80008000;
+	} else if (strcmp(argv[1], "trim") == 0) {
+		print_str = "Trim";
+		checkup_mask = EXT_CSD_SEC_GB_CL_EN;
+		arg = 0x00000001;
+	} else {
+		fprintf(stderr, "Unknown erase type: %s\n", argv[1]);
+		exit(1);
+	}
+
+	dev_fd = open(argv[4], O_RDWR);
+	if (dev_fd < 0) {
+		perror(argv[4]);
+		exit(1);
+	}
+
+	if (checkup_mask) {
+		ret = read_extcsd(dev_fd, ext_csd);
+		if (ret) {
+			fprintf(stderr, "Could not read EXT_CSD from %s\n",
+				argv[4]);
+			goto out;
+		}
+		if ((checkup_mask & ext_csd[EXT_CSD_SEC_FEATURE_SUPPORT]) !=
+								checkup_mask) {
+			fprintf(stderr, "%s is not supported in %s\n",
+				print_str, argv[4]);
+			ret = -ENOTSUP;
+			goto out;
+		}
+
+	}
+	printf("Executing %s from 0x%08x to 0x%08x\n", print_str, start, end);
+
+	ret = erase(dev_fd, arg, start, end);
+out:
+	printf(" %s %s!\n\n", print_str, ret ? "Failed" : "Succeed");
+	close(dev_fd);
+	return ret;
+}
+
 
 int do_ffu(int nargs, char **argv)
 {

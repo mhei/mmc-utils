@@ -36,7 +36,15 @@
 #define MMC_SET_WRITE_PROT	28    /* ac   [31:0] data addr   R1b */
 #define MMC_CLEAR_WRITE_PROT	29    /* ac   [31:0] data addr   R1b */
 #define MMC_SEND_WRITE_PROT_TYPE 31   /* ac   [31:0] data addr   R1  */
-
+#define MMC_ERASE_GROUP_START	35    /* ac   [31:0] data addr   R1  */
+#define MMC_ERASE_GROUP_END	36    /* ac   [31:0] data addr   R1  */
+#define MMC_ERASE		38    /* ac   [31] Secure request
+					      [30:16] set to 0
+					      [15] Force Garbage Collect request
+					      [14:2] set to 0
+					      [1] Discard Enable
+					      [0] Identify Write Blocks for
+					      Erase (or TRIM Enable)  R1b */
 /*
  * EXT_CSD fields
  */
@@ -63,6 +71,7 @@
 #define EXT_CSD_CACHE_SIZE_2		251
 #define EXT_CSD_CACHE_SIZE_1		250
 #define EXT_CSD_CACHE_SIZE_0		249
+#define EXT_CSD_SEC_FEATURE_SUPPORT	231
 #define EXT_CSD_BOOT_INFO		228	/* R/W */
 #define EXT_CSD_HC_ERASE_GRP_SIZE	224
 #define EXT_CSD_HC_WP_GRP_SIZE		221
@@ -76,6 +85,7 @@
 #define EXT_CSD_PART_CONFIG		179
 #define EXT_CSD_BOOT_BUS_CONDITIONS	177
 #define EXT_CSD_ERASE_GROUP_DEF		175
+#define EXT_CSD_BOOT_WP_STATUS		174
 #define EXT_CSD_BOOT_WP			173
 #define EXT_CSD_USER_WP			171
 #define EXT_CSD_FW_CONFIG		169	/* R/W */
@@ -128,9 +138,10 @@
 #define EN_REL_WR	(1<<2)
 
 /*
- * BKOPS_EN field definition
+ * BKOPS_EN field definitions
  */
-#define BKOPS_ENABLE	(1<<0)
+#define BKOPS_MAN_ENABLE	(1<<0)
+#define BKOPS_AUTO_ENABLE	(1<<1)
 
 /*
  * EXT_CSD field definitions
@@ -145,9 +156,19 @@
 #define EXT_CSD_HPI_SUPP		(1<<0)
 #define EXT_CSD_HPI_IMPL		(1<<1)
 #define EXT_CSD_CMD_SET_NORMAL		(1<<0)
+/* NOTE: The eMMC spec calls the partitions "Area 1" and "Area 2", but Linux
+ * calls them mmcblk0boot0 and mmcblk0boot1. To avoid confustion between the two
+ * numbering schemes, this tool uses 0 and 1 throughout. */
+#define EXT_CSD_BOOT_WP_S_AREA_1_PERM	(0x08)
+#define EXT_CSD_BOOT_WP_S_AREA_1_PWR	(0x04)
+#define EXT_CSD_BOOT_WP_S_AREA_0_PERM	(0x02)
+#define EXT_CSD_BOOT_WP_S_AREA_0_PWR	(0x01)
+#define EXT_CSD_BOOT_WP_B_SEC_WP_SEL	(0x80)
 #define EXT_CSD_BOOT_WP_B_PWR_WP_DIS	(0x40)
 #define EXT_CSD_BOOT_WP_B_PERM_WP_DIS	(0x10)
+#define EXT_CSD_BOOT_WP_B_PERM_WP_SEC_SEL (0x08)
 #define EXT_CSD_BOOT_WP_B_PERM_WP_EN	(0x04)
+#define EXT_CSD_BOOT_WP_B_PWR_WP_SEC_SEL (0x02)
 #define EXT_CSD_BOOT_WP_B_PWR_WP_EN	(0x01)
 #define EXT_CSD_BOOT_INFO_HS_MODE	(1<<2)
 #define EXT_CSD_BOOT_INFO_DDR_DDR	(1<<1)
@@ -179,6 +200,8 @@
 #define EXT_CSD_REV_V4_2		2
 #define EXT_CSD_REV_V4_1		1
 #define EXT_CSD_REV_V4_0		0
+#define EXT_CSD_SEC_GB_CL_EN		(1<<4)
+#define EXT_CSD_SEC_ER_EN		(1<<0)
 
 
 /* From kernel linux/mmc/core.h */
