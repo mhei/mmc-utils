@@ -1884,6 +1884,8 @@ int do_read_extcsd(int nargs, char **argv)
 		       (ext_csd[EXT_CSD_CMDQ_DEPTH] & 0x1f) + 1);
 		printf("Command Enabled [CMDQ_MODE_EN]: 0x%02x\n",
 		       ext_csd[EXT_CSD_CMDQ_MODE_EN]);
+		printf("Note: CMDQ_MODE_EN may not indicate the runtime CMDQ ON or OFF.\n"
+		       "Please check sysfs node '/sys/devices/.../mmc_host/mmcX/mmcX:XXXX/cmdq_en'\n");
 	}
 out_free:
 	return ret;
