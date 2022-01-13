@@ -1,0 +1,31 @@
+MMC tools (mmc-utils)
+=====================
+
+mmc-utils is a tool for configuring MMC storage devices from userspace.
+
+Contribution guidelines
+-----------------------
+
+The project works using a mailing list patch submission process, similar to the
+process used for the Linux kernel itself.
+
+One can document themselves by reading how to submit a patch in the official
+Linux kernel documentation:
+https://www.kernel.org/doc/html/latest/process/submitting-patches.html
+
+Not all sections apply but it should be a good way to get started.
+
+A patch should be sent as a mail (not as an attachement, see documentation
+above) to the linux-mmc@vger.kernel.org mailing list with maintainers as
+Cc recipients.
+
+Maintainers
+-----------
+
+Avri Altman <avri.altman@wdc.com>
+Ulf Hansson <ulf.hansson@linaro.org>
+
+License
+-------
+
+This project is licensed under GPL-2.0-only.
