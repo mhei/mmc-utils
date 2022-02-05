@@ -1628,6 +1628,9 @@ int do_read_extcsd(int nargs, char **argv)
 	printf("Power class [POWER_CLASS: 0x%02x]\n", ext_csd[187]);
 	printf("High-speed interface timing [HS_TIMING: 0x%02x]\n",
 		ext_csd[185]);
+	if (ext_csd_rev >= 8)
+		printf("Enhanced Strobe mode [STROBE_SUPPORT: 0x%02x]\n",
+			ext_csd[184]);
 	/* bus_width: ext_csd[183] not readable */
 	printf("Erased memory content [ERASED_MEM_CONT: 0x%02x]\n",
 		ext_csd[181]);
