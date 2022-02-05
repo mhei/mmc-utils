@@ -19,9 +19,6 @@
 
 #include <linux/mmc/ioctl.h>
 
-/* From kernel linux/major.h */
-#define MMC_BLOCK_MAJOR			179
-
 /* From kernel linux/mmc/mmc.h */
 #define MMC_SWITCH		6	/* ac	[31:0] See below	R1b */
 #define MMC_SEND_EXT_CSD	8	/* adtc				R1  */
