@@ -848,6 +848,8 @@ int do_status_get(int nargs, char **argv)
 	__u32 response;
 	int fd, ret;
 	char *device;
+	const char *str;
+	__u8 state;
 
 	if (nargs != 2) {
 		fprintf(stderr, "Usage: mmc status get </path/to/mmcblkX>\n");
@@ -870,6 +872,89 @@ int do_status_get(int nargs, char **argv)
 
 	printf("SEND_STATUS response: 0x%08x\n", response);
 
+	if (response & R1_OUT_OF_RANGE)
+		printf("ERROR: ADDRESS_OUT_OF_RANGE\n");
+	if (response & R1_ADDRESS_ERROR)
+		printf("ERROR: ADDRESS_MISALIGN\n");
+	if (response & R1_BLOCK_LEN_ERROR)
+		printf("ERROR: BLOCK_LEN_ERROR\n");
+	if (response & R1_ERASE_SEQ_ERROR)
+		printf("ERROR: ERASE_SEQ_ERROR\n");
+	if (response & R1_ERASE_PARAM)
+		printf("ERROR: ERASE_PARAM_ERROR\n");
+	if (response & R1_WP_VIOLATION)
+		printf("ERROR: WP_VOILATION\n");
+	if (response & R1_CARD_IS_LOCKED)
+		printf("STATUS: DEVICE_IS_LOCKED\n");
+	if (response & R1_LOCK_UNLOCK_FAILED)
+		printf("ERROR: LOCK_UNLOCK_IS_FAILED\n");
+	if (response & R1_COM_CRC_ERROR)
+		printf("ERROR: COM_CRC_ERROR\n");
+	if (response & R1_ILLEGAL_COMMAND)
+		printf("ERROR: ILLEGAL_COMMAND\n");
+	if (response & R1_CARD_ECC_FAILED)
+		printf("ERROR: DEVICE_ECC_FAILED\n");
+	if (response & R1_CC_ERROR)
+		printf("ERROR: CC_ERROR\n");
+	if (response & R1_ERROR)
+		printf("ERROR: ERROR\n");
+	if (response & R1_CID_CSD_OVERWRITE)
+		printf("ERROR: CID/CSD OVERWRITE\n");
+	if (response & R1_WP_ERASE_SKIP)
+		printf("ERROR: WP_ERASE_SKIP\n");
+	if (response & R1_ERASE_RESET)
+		printf("ERROR: ERASE_RESET\n");
+
+	state = (response >> 9) & 0xF;
+	switch (state) {
+	case 0:
+		str = "IDLE";
+		break;
+	case 1:
+		str = "READY";
+		break;
+	case 2:
+		str = "IDENT";
+		break;
+	case 3:
+		str = "STDBY";
+		break;
+	case 4:
+		str = "TRANS";
+		break;
+	case 5:
+		str = "DATA";
+		break;
+	case 6:
+		str = "RCV";
+		break;
+	case 7:
+		str = "PRG";
+		break;
+	case 8:
+		str = "DIS";
+		break;
+	case 9:
+		str = "BTST";
+		break;
+	case 10:
+		str = "SLP";
+		break;
+	default:
+		printf("Attention : Device state is INVALID: Kindly check the Response\n");
+		goto out_free;
+	}
+
+	printf("DEVICE STATE: %s\n", str);
+	if (response & R1_READY_FOR_DATA)
+		printf("STATUS: READY_FOR_DATA\n");
+	if (response & R1_SWITCH_ERROR)
+		printf("ERROR: SWITCH_ERROR\n");
+	if (response & R1_EXCEPTION_EVENT)
+		printf("STATUS: EXCEPTION_EVENT\n");  /* Check EXCEPTION_EVENTS_STATUS fields for further actions */
+	if (response & R1_APP_CMD)
+		printf("STATUS: APP_CMD\n");
+out_free:
 	close(fd);
 	return ret;
 }
