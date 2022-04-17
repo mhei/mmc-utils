@@ -237,6 +237,14 @@ static struct Command commands[] = {
 		"secure-trim1 | secure-trim2 | trim \n",
 	NULL
 	},
+	{ do_general_cmd_read, -1,
+	"gen_cmd read", "<device> [arg]\n"
+		"Send GEN_CMD (CMD56) to read vendor-specific format/meaning data from <device>\n\n"
+		"NOTE!: [arg] is optional and defaults to 0x1. If [arg] is specified, then [arg]\n"
+		"must be a 32-bit hexadecimal number, prefixed with 0x/0X. And bit0 in [arg] must\n"
+		"be 1.",
+	NULL
+	},
 	{ 0, 0, 0, 0 }
 };
 

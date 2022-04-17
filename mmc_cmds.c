@@ -2981,3 +2981,60 @@ out:
 	return ret;
 #endif
 }
+
+int do_general_cmd_read(int nargs, char **argv)
+{
+	int dev_fd;
+	char *device;
+	char *endptr;
+	__u8 buf[512];
+	__u32 arg = 0x01;
+	int ret = -EINVAL, i;
+	struct mmc_ioc_cmd idata;
+
+	if (nargs != 2 && nargs != 3) {
+		fprintf(stderr, "Usage: gen_cmd read </path/to/mmcblkX> [arg]\n");
+		exit(1);
+	}
+
+	device = argv[1];
+	dev_fd = open(device, O_RDWR);
+	if (dev_fd < 0) {
+		perror("device open failed");
+		exit(1);
+	}
+
+	/* arg is specified */
+	if (nargs == 3) {
+		arg = strtol(argv[2], &endptr, 16);
+		if (errno != 0 || *endptr != '\0' || !(arg & 0x1)) {
+			fprintf(stderr, "Wrong ARG, it should be Hex number and bit0 must be 1\n");
+			goto out;
+		}
+	}
+
+	memset(&idata, 0, sizeof(idata));
+	idata.write_flag = 0;
+	idata.opcode = MMC_GEN_CMD;
+	idata.arg = arg;
+	idata.flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_ADTC;
+	idata.blksz = 512;
+	idata.blocks = 1;
+	mmc_ioc_cmd_set_data(idata, buf);
+
+	ret = ioctl(dev_fd, MMC_IOC_CMD, &idata);
+	if (ret) {
+		perror("ioctl");
+		goto out;
+	}
+
+	printf("Data:\n");
+	for (i = 0; i < 512; i++) {
+		printf("%2x ", buf[i]);
+		if ((i + 1) % 16 == 0)
+			printf("\n");
+	}
+out:
+	close(dev_fd);
+	return ret;
+}

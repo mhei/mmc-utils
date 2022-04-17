@@ -42,6 +42,8 @@
 					      [1] Discard Enable
 					      [0] Identify Write Blocks for
 					      Erase (or TRIM Enable)  R1b */
+#define MMC_GEN_CMD		56   /* adtc  [31:1] stuff bits.
+					      [0]: RD/WR1 R1 */
 
 #define R1_OUT_OF_RANGE         (1 << 31)       /* er, c */
 #define R1_ADDRESS_ERROR        (1 << 30)       /* erx, c */
