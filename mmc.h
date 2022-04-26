@@ -17,6 +17,7 @@
  * those modifications are Copyright (c) 2016 SanDisk Corp.
  */
 
+#include <linux/major.h>
 #include <linux/mmc/ioctl.h>
 
 /* From kernel linux/mmc/mmc.h */
