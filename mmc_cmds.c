@@ -848,6 +848,8 @@ int do_status_get(int nargs, char **argv)
 	__u32 response;
 	int fd, ret;
 	char *device;
+	const char *str;
+	__u8 state;
 
 	if (nargs != 2) {
 		fprintf(stderr, "Usage: mmc status get </path/to/mmcblkX>\n");
@@ -870,6 +872,89 @@ int do_status_get(int nargs, char **argv)
 
 	printf("SEND_STATUS response: 0x%08x\n", response);
 
+	if (response & R1_OUT_OF_RANGE)
+		printf("ERROR: ADDRESS_OUT_OF_RANGE\n");
+	if (response & R1_ADDRESS_ERROR)
+		printf("ERROR: ADDRESS_MISALIGN\n");
+	if (response & R1_BLOCK_LEN_ERROR)
+		printf("ERROR: BLOCK_LEN_ERROR\n");
+	if (response & R1_ERASE_SEQ_ERROR)
+		printf("ERROR: ERASE_SEQ_ERROR\n");
+	if (response & R1_ERASE_PARAM)
+		printf("ERROR: ERASE_PARAM_ERROR\n");
+	if (response & R1_WP_VIOLATION)
+		printf("ERROR: WP_VOILATION\n");
+	if (response & R1_CARD_IS_LOCKED)
+		printf("STATUS: DEVICE_IS_LOCKED\n");
+	if (response & R1_LOCK_UNLOCK_FAILED)
+		printf("ERROR: LOCK_UNLOCK_IS_FAILED\n");
+	if (response & R1_COM_CRC_ERROR)
+		printf("ERROR: COM_CRC_ERROR\n");
+	if (response & R1_ILLEGAL_COMMAND)
+		printf("ERROR: ILLEGAL_COMMAND\n");
+	if (response & R1_CARD_ECC_FAILED)
+		printf("ERROR: DEVICE_ECC_FAILED\n");
+	if (response & R1_CC_ERROR)
+		printf("ERROR: CC_ERROR\n");
+	if (response & R1_ERROR)
+		printf("ERROR: ERROR\n");
+	if (response & R1_CID_CSD_OVERWRITE)
+		printf("ERROR: CID/CSD OVERWRITE\n");
+	if (response & R1_WP_ERASE_SKIP)
+		printf("ERROR: WP_ERASE_SKIP\n");
+	if (response & R1_ERASE_RESET)
+		printf("ERROR: ERASE_RESET\n");
+
+	state = (response >> 9) & 0xF;
+	switch (state) {
+	case 0:
+		str = "IDLE";
+		break;
+	case 1:
+		str = "READY";
+		break;
+	case 2:
+		str = "IDENT";
+		break;
+	case 3:
+		str = "STDBY";
+		break;
+	case 4:
+		str = "TRANS";
+		break;
+	case 5:
+		str = "DATA";
+		break;
+	case 6:
+		str = "RCV";
+		break;
+	case 7:
+		str = "PRG";
+		break;
+	case 8:
+		str = "DIS";
+		break;
+	case 9:
+		str = "BTST";
+		break;
+	case 10:
+		str = "SLP";
+		break;
+	default:
+		printf("Attention : Device state is INVALID: Kindly check the Response\n");
+		goto out_free;
+	}
+
+	printf("DEVICE STATE: %s\n", str);
+	if (response & R1_READY_FOR_DATA)
+		printf("STATUS: READY_FOR_DATA\n");
+	if (response & R1_SWITCH_ERROR)
+		printf("ERROR: SWITCH_ERROR\n");
+	if (response & R1_EXCEPTION_EVENT)
+		printf("STATUS: EXCEPTION_EVENT\n");  /* Check EXCEPTION_EVENTS_STATUS fields for further actions */
+	if (response & R1_APP_CMD)
+		printf("STATUS: APP_CMD\n");
+out_free:
 	close(fd);
 	return ret;
 }
@@ -1392,7 +1477,6 @@ int do_read_extcsd(int nargs, char **argv)
 	__u32 regl;
 	int fd, ret;
 	char *device;
-	char lbuf[10];
 	const char *str;
 
 	if (nargs != 2) {
@@ -1613,6 +1697,8 @@ int do_read_extcsd(int nargs, char **argv)
 	/* DEVICE_TYPE in A45, CARD_TYPE in A441 */
 	reg = ext_csd[196];
 	printf("Card Type [CARD_TYPE: 0x%02x]\n", reg);
+	if (reg & 0x80) printf(" HS400 Dual Data Rate eMMC @200MHz 1.2VI/O\n");
+	if (reg & 0x40) printf(" HS400 Dual Data Rate eMMC @200MHz 1.8VI/O\n");
 	if (reg & 0x20) printf(" HS200 Single Data Rate eMMC @200MHz 1.2VI/O\n");
 	if (reg & 0x10) printf(" HS200 Single Data Rate eMMC @200MHz 1.8VI/O\n");
 	if (reg & 0x08) printf(" HS Dual Data Rate eMMC @52MHz 1.2VI/O\n");
@@ -1627,6 +1713,9 @@ int do_read_extcsd(int nargs, char **argv)
 	printf("Power class [POWER_CLASS: 0x%02x]\n", ext_csd[187]);
 	printf("High-speed interface timing [HS_TIMING: 0x%02x]\n",
 		ext_csd[185]);
+	if (ext_csd_rev >= 8)
+		printf("Enhanced Strobe mode [STROBE_SUPPORT: 0x%02x]\n",
+			ext_csd[184]);
 	/* bus_width: ext_csd[183] not readable */
 	printf("Erased memory content [ERASED_MEM_CONT: 0x%02x]\n",
 		ext_csd[181]);
@@ -1830,13 +1919,13 @@ int do_read_extcsd(int nargs, char **argv)
 		printf("Control to turn the Cache ON/OFF"
 			" [CACHE_CTRL]: 0x%02x\n", ext_csd[33]);
 		/* flush_cache ext_csd[32] not readable */
-		/*Reserved [31:0] */
+		printf("Control to turn the Cache Barrier ON/OFF"
+			" [BARRIER_CTRL]: 0x%02x\n", ext_csd[31]);
+		/*Reserved [30:0] */
 	}
 
 	if (ext_csd_rev >= 7) {
-                memset(lbuf, 0, sizeof(lbuf));
-		strncpy(lbuf, (char*)&ext_csd[EXT_CSD_FIRMWARE_VERSION], 8);
-		printf("eMMC Firmware Version: %s\n", lbuf);
+		printf("eMMC Firmware Version: %.8s\n", (char*)&ext_csd[EXT_CSD_FIRMWARE_VERSION]);
 		printf("eMMC Life Time Estimation A [EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_A]: 0x%02x\n",
 			ext_csd[EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_A]);
 		printf("eMMC Life Time Estimation B [EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_B]: 0x%02x\n",
@@ -1884,6 +1973,8 @@ int do_read_extcsd(int nargs, char **argv)
 		       (ext_csd[EXT_CSD_CMDQ_DEPTH] & 0x1f) + 1);
 		printf("Command Enabled [CMDQ_MODE_EN]: 0x%02x\n",
 		       ext_csd[EXT_CSD_CMDQ_MODE_EN]);
+		printf("Note: CMDQ_MODE_EN may not indicate the runtime CMDQ ON or OFF.\n"
+		       "Please check sysfs node '/sys/devices/.../mmc_host/mmcX/mmcX:XXXX/cmdq_en'\n");
 	}
 out_free:
 	return ret;
@@ -2889,4 +2980,61 @@ out:
 	close(dev_fd);
 	return ret;
 #endif
+}
+
+int do_general_cmd_read(int nargs, char **argv)
+{
+	int dev_fd;
+	char *device;
+	char *endptr;
+	__u8 buf[512];
+	__u32 arg = 0x01;
+	int ret = -EINVAL, i;
+	struct mmc_ioc_cmd idata;
+
+	if (nargs != 2 && nargs != 3) {
+		fprintf(stderr, "Usage: gen_cmd read </path/to/mmcblkX> [arg]\n");
+		exit(1);
+	}
+
+	device = argv[1];
+	dev_fd = open(device, O_RDWR);
+	if (dev_fd < 0) {
+		perror("device open failed");
+		exit(1);
+	}
+
+	/* arg is specified */
+	if (nargs == 3) {
+		arg = strtol(argv[2], &endptr, 16);
+		if (errno != 0 || *endptr != '\0' || !(arg & 0x1)) {
+			fprintf(stderr, "Wrong ARG, it should be Hex number and bit0 must be 1\n");
+			goto out;
+		}
+	}
+
+	memset(&idata, 0, sizeof(idata));
+	idata.write_flag = 0;
+	idata.opcode = MMC_GEN_CMD;
+	idata.arg = arg;
+	idata.flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_ADTC;
+	idata.blksz = 512;
+	idata.blocks = 1;
+	mmc_ioc_cmd_set_data(idata, buf);
+
+	ret = ioctl(dev_fd, MMC_IOC_CMD, &idata);
+	if (ret) {
+		perror("ioctl");
+		goto out;
+	}
+
+	printf("Data:\n");
+	for (i = 0; i < 512; i++) {
+		printf("%2x ", buf[i]);
+		if ((i + 1) % 16 == 0)
+			printf("\n");
+	}
+out:
+	close(dev_fd);
+	return ret;
 }
