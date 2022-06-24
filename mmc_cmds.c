@@ -2768,7 +2768,6 @@ int do_ffu(int nargs, char **argv)
 	ssize_t chunk_size;
 	char *device;
 	struct mmc_ioc_multi_cmd *multi_cmd = NULL;
-	__u32 blocks = 1;
 
 	if (nargs != 3) {
 		fprintf(stderr, "Usage: ffu <image name> </path/to/mmcblkX> \n");
@@ -2826,14 +2825,12 @@ int do_ffu(int nargs, char **argv)
 		goto out;
 	}
 
+	/* ensure fw is multiple of native sector size */
 	sect_size = (ext_csd[EXT_CSD_DATA_SECTOR_SIZE] == 0) ? 512 : 4096;
 	if (fw_size % sect_size) {
 		fprintf(stderr, "Firmware data size (%jd) is not aligned!\n", (intmax_t)fw_size);
 		goto out;
 	}
-
-	/* calculate required fw blocks for CMD25 */
-	blocks = fw_size / sect_size;
 
 	/* set CMD ARG */
 	arg = ext_csd[EXT_CSD_FFU_ARG_0] |
@@ -2857,13 +2854,17 @@ int do_ffu(int nargs, char **argv)
 
 	/* send block count */
 	multi_cmd->cmds[1].opcode = MMC_SET_BLOCK_COUNT;
-	multi_cmd->cmds[1].arg = blocks;
+	multi_cmd->cmds[1].arg = fw_size / 512;
 	multi_cmd->cmds[1].flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_AC;
 
 	/* send image chunk */
 	multi_cmd->cmds[2].opcode = MMC_WRITE_MULTIPLE_BLOCK;
-	multi_cmd->cmds[2].blksz = sect_size;
-	multi_cmd->cmds[2].blocks = blocks;
+	/*
+	 * blksz and blocks essentially do not matter, as long as the product
+	 * is fw_size, but some hosts don't handle larger blksz well.
+	 */
+	multi_cmd->cmds[2].blksz = 512;
+	multi_cmd->cmds[2].blocks = fw_size / 512;
 	multi_cmd->cmds[2].arg = arg;
 	multi_cmd->cmds[2].flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_ADTC;
 	multi_cmd->cmds[2].write_flag = 1;
