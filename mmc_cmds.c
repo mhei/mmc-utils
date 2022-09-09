@@ -2765,7 +2765,6 @@ int do_ffu(int nargs, char **argv)
 	__u8 *buf = NULL;
 	__u32 arg;
 	off_t fw_size;
-	ssize_t chunk_size;
 	char *device;
 	struct mmc_ioc_multi_cmd *multi_cmd = NULL;
 
@@ -2879,45 +2878,44 @@ int do_ffu(int nargs, char **argv)
 	multi_cmd->cmds[3].flags = MMC_RSP_SPI_R1B | MMC_RSP_R1B | MMC_CMD_AC;
 	multi_cmd->cmds[3].write_flag = 1;
 
-do_retry:
-	/* read firmware chunk */
+	/* read firmware */
 	lseek(img_fd, 0, SEEK_SET);
-	chunk_size = read(img_fd, buf, fw_size);
+	if (read(img_fd, buf, fw_size) != fw_size) {
+		perror("Could not read the firmware file: ");
+		ret = -ENOSPC;
+		goto out;
+	}
 
-	if (chunk_size > 0) {
-		/* send ioctl with multi-cmd */
-		ret = ioctl(dev_fd, MMC_IOC_MULTI_CMD, multi_cmd);
+do_retry:
+	/* send ioctl with multi-cmd */
+	ret = ioctl(dev_fd, MMC_IOC_MULTI_CMD, multi_cmd);
 
-		if (ret) {
-			perror("Multi-cmd ioctl");
-			/* In case multi-cmd ioctl failed before exiting from ffu mode */
-			ioctl(dev_fd, MMC_IOC_CMD, &multi_cmd->cmds[3]);
-			goto out;
+	if (ret) {
+		perror("Multi-cmd ioctl");
+		/* In case multi-cmd ioctl failed before exiting from ffu mode */
+		ioctl(dev_fd, MMC_IOC_CMD, &multi_cmd->cmds[3]);
+		goto out;
+	}
+
+	ret = read_extcsd(dev_fd, ext_csd);
+	if (ret) {
+		fprintf(stderr, "Could not read EXT_CSD from %s\n", device);
+		goto out;
+	}
+
+	/* Test if we need to restart the download */
+	sect_done = ext_csd[EXT_CSD_NUM_OF_FW_SEC_PROG_0] |
+			ext_csd[EXT_CSD_NUM_OF_FW_SEC_PROG_1] << 8 |
+			ext_csd[EXT_CSD_NUM_OF_FW_SEC_PROG_2] << 16 |
+			ext_csd[EXT_CSD_NUM_OF_FW_SEC_PROG_3] << 24;
+	/* By spec, host should re-start download from the first sector if sect_done is 0 */
+	if (sect_done == 0) {
+		if (retry--) {
+			fprintf(stderr, "Programming failed. Retrying... (%d)\n", retry);
+			goto do_retry;
 		}
-
-		ret = read_extcsd(dev_fd, ext_csd);
-		if (ret) {
-			fprintf(stderr, "Could not read EXT_CSD from %s\n", device);
-			goto out;
-		}
-
-		/* Test if we need to restart the download */
-		sect_done = ext_csd[EXT_CSD_NUM_OF_FW_SEC_PROG_0] |
-				ext_csd[EXT_CSD_NUM_OF_FW_SEC_PROG_1] << 8 |
-				ext_csd[EXT_CSD_NUM_OF_FW_SEC_PROG_2] << 16 |
-				ext_csd[EXT_CSD_NUM_OF_FW_SEC_PROG_3] << 24;
-		/* By spec, host should re-start download from the first sector if sect_done is 0 */
-		if (sect_done == 0) {
-			if (retry > 0) {
-				retry--;
-				fprintf(stderr, "Programming failed. Retrying... (%d)\n", retry);
-				goto do_retry;
-			}
-			fprintf(stderr, "Programming failed! Aborting...\n");
-			goto out;
-		} else {
-			fprintf(stderr, "Programmed %d/%jd bytes\r", sect_done * sect_size, (intmax_t)fw_size);
-		}
+		fprintf(stderr, "Programming failed! Aborting...\n");
+		goto out;
 	}
 
 	if ((sect_done * sect_size) == fw_size) {
