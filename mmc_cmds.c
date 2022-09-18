@@ -2238,8 +2238,10 @@ int rpmb_read_counter(int dev_fd, unsigned int *cnt)
 	}
 
 	/* Check RPMB response */
-	if (frame_out.result != 0)
+	if (frame_out.result != 0) {
+		*cnt = 0;
 		return be16toh(frame_out.result);
+	}
 
 	*cnt = be32toh(frame_out.write_counter);
 
