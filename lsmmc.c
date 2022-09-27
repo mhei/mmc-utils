@@ -237,7 +237,7 @@ struct ids_database database[] = {
 	{
 		.type = "mmc",
 		.id = 0x44,
-		.manufacturer = "SanDisk",
+		.manufacturer = "ATP",
 	},
 	{
 		.type = "mmc",
