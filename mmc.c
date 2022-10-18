@@ -245,6 +245,16 @@ static struct Command commands[] = {
 		"be 1.",
 	NULL
 	},
+	{ do_softreset, -1,
+	  "softreset", "<device>\n"
+	  "Issues a CMD0 softreset, e.g. for testing if hardware reset for UHS works",
+	  NULL
+	},
+	{ do_preidle, -1,
+	  "preidle", "<device>\n"
+	  "Issues a CMD0 GO_PRE_IDLE",
+	  NULL
+	},
 	{ 0, 0, 0, 0 }
 };
 
