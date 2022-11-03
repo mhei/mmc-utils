@@ -255,6 +255,18 @@ static struct Command commands[] = {
 	  "Issues a CMD0 GO_PRE_IDLE",
 	  NULL
 	},
+	{ do_alt_boot_op, -1,
+	  "boot_operation", "<boot_data_file> <device>\n"
+	  "Does the alternative boot operation and writes the specified starting blocks of boot data into the requested file.\n\n"
+	  "Note some limitations\n:"
+	  "1. The boot operation must be configured, e.g. for legacy speed:\n"
+	  "mmc-utils bootbus set single_backward retain x8 /dev/mmcblk2\n"
+	  "mmc-utils bootpart enable 1 0 /dev/mmcblk2\n"
+	  "2. The MMC must currently be running at the bus mode that is configured for the boot operation (HS200 and HS400 not supported at all).\n"
+	  "3. Only up to 512K bytes of boot data will be transferred.\n"
+	  "4. The MMC will perform a soft reset, if your system cannot handle that do not use the boot operation from mmc-utils.\n",
+	  NULL
+	},
 	{ 0, 0, 0, 0 }
 };
 

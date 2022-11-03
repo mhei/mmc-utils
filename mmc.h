@@ -24,6 +24,7 @@
 #define MMC_GO_IDLE_STATE         0   /* bc                          */
 #define MMC_GO_IDLE_STATE_ARG		0x0
 #define MMC_GO_PRE_IDLE_STATE_ARG	0xF0F0F0F0
+#define MMC_BOOT_INITIATION_ARG		0xFFFFFFFA
 #define MMC_SWITCH		6	/* ac	[31:0] See below	R1b */
 #define MMC_SEND_EXT_CSD	8	/* adtc				R1  */
 #define MMC_SEND_STATUS		13	/* ac   [31:16] RCA        R1  */
@@ -97,6 +98,7 @@
 #define EXT_CSD_CACHE_SIZE_0		249
 #define EXT_CSD_SEC_FEATURE_SUPPORT	231
 #define EXT_CSD_BOOT_INFO		228	/* R/W */
+#define EXT_CSD_BOOT_MULT		226	/* RO */
 #define EXT_CSD_HC_ERASE_GRP_SIZE	224
 #define EXT_CSD_HC_WP_GRP_SIZE		221
 #define EXT_CSD_SEC_COUNT_3		215
