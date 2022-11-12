@@ -47,3 +47,6 @@ int do_read_cid(int argc, char **argv);
 int do_read_csd(int argc, char **argv);
 int do_erase(int nargs, char **argv);
 int do_general_cmd_read(int nargs, char **argv);
+int do_softreset(int nargs, char **argv);
+int do_preidle(int nargs, char **argv);
+int do_alt_boot_op(int nargs, char **argv);
