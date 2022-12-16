@@ -58,6 +58,11 @@ static struct Command commands[] = {
 		"Print extcsd data from <device>.",
 	  NULL
 	},
+	{ do_write_extcsd, 3,
+	  "extcsd write", "<offset> <value> <device>\n"
+		  "Write <value> at offset <offset> to <device>'s extcsd.",
+	  NULL
+	},
 	{ do_writeprotect_boot_get, -1,
 	  "writeprotect boot get", "<device>\n"
 		"Print the boot partitions write protect status for <device>.",
