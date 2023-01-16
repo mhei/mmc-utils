@@ -54,7 +54,6 @@
 #define WPTYPE_PWRON 2
 #define WPTYPE_PERM 3
 
-
 int read_extcsd(int fd, __u8 *ext_csd)
 {
 	int ret = 0;
@@ -2699,6 +2698,18 @@ static int erase(int dev_fd, __u32 argin, __u32 start, __u32 end)
 	ret = ioctl(dev_fd, MMC_IOC_MULTI_CMD, multi_cmd);
 	if (ret)
 		perror("Erase multi-cmd ioctl");
+
+	/* Does not work for SPI cards */
+	if (multi_cmd->cmds[1].response[0] & R1_ERASE_PARAM) {
+		fprintf(stderr, "Erase start response: 0x%08x\n",
+				multi_cmd->cmds[0].response[0]);
+		ret = -EIO;
+	}
+	if (multi_cmd->cmds[2].response[0] & R1_ERASE_SEQ_ERROR) {
+		fprintf(stderr, "Erase response: 0x%08x\n",
+				multi_cmd->cmds[2].response[0]);
+		ret = -EIO;
+	}
 
 	free(multi_cmd);
 	return ret;
