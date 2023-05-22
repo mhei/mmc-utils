@@ -241,6 +241,11 @@ struct ids_database database[] = {
 	},
 	{
 		.type = "mmc",
+		.id = 0x45,
+		.manufacturer = "SanDisk Corporation",
+	},
+	{
+		.type = "mmc",
 		.id = 0x2c,
 		.manufacturer = "Kingston",
 	},
