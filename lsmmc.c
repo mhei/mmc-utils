@@ -636,10 +636,10 @@ void print_mmc_cid(struct config *config, char *cid)
 		printf("\tCRC: 0x%02x\n", crc);
 	} else {
 		if (config->mmc_ids[mid])
-			printf("manufacturer: '%s' '%c'\n",
+			printf("manufacturer: '%s' 0x%01x\n",
 			       config->mmc_ids[mid], oid);
 		else
-			printf("manufacturer: 'Unlisted' '%c'\n", oid);
+			printf("manufacturer: 'Unlisted' 0x%01x\n", oid);
 
 		printf("product: '%s' %u.%u\n", pnm, prv_major, prv_minor);
 		printf("serial: 0x%08x\n", psn);
