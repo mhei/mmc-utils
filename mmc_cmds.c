@@ -34,6 +34,10 @@
 #include "mmc_cmds.h"
 #include "3rdparty/hmac_sha/hmac_sha2.h"
 
+#ifndef MMC_IOC_MULTI_CMD
+#error "mmc-utils needs MMC_IOC_MULTI_CMD support (added in kernel v4.4)"
+#endif
+
 #ifndef offsetof
 #define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
 #endif
@@ -2112,11 +2116,6 @@ static int do_rpmb_op(int fd,
 					  struct rpmb_frame *frame_out,
 					  unsigned int out_cnt)
 {
-#ifndef MMC_IOC_MULTI_CMD
-	fprintf(stderr, "mmc-utils has been compiled without MMC_IOC_MULTI_CMD"
-		" support, needed by RPMB operation.\n");
-	exit(1);
-#else
 	int err;
 	u_int16_t rpmb_type;
 	struct mmc_ioc_multi_cmd *mioc;
@@ -2196,7 +2195,6 @@ static int do_rpmb_op(int fd,
 out:
 	free(mioc);
 	return err;
-#endif /* !MMC_IOC_MULTI_CMD */
 }
 
 int do_rpmb_write_key(int nargs, char **argv)
@@ -2804,11 +2802,6 @@ out:
 
 int do_ffu(int nargs, char **argv)
 {
-#ifndef MMC_IOC_MULTI_CMD
-	fprintf(stderr, "mmc-utils has been compiled without MMC_IOC_MULTI_CMD"
-			" support, needed by FFU.\n");
-	exit(1);
-#else
 	int dev_fd, img_fd;
 	int sect_done = 0, retry = 3, ret = -EINVAL;
 	unsigned int sect_size;
@@ -3034,7 +3027,6 @@ out:
 	close(img_fd);
 	close(dev_fd);
 	return ret;
-#endif
 }
 
 int do_general_cmd_read(int nargs, char **argv)
