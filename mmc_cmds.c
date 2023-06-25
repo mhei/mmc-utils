@@ -79,19 +79,22 @@ int read_extcsd(int fd, __u8 *ext_csd)
 	return ret;
 }
 
+static void fill_switch_cmd(struct mmc_ioc_cmd *cmd, __u8 index, __u8 value)
+{
+	cmd->opcode = MMC_SWITCH;
+	cmd->write_flag = 1;
+	cmd->arg = (MMC_SWITCH_MODE_WRITE_BYTE << 24) | (index << 16) |
+		   (value << 8) | EXT_CSD_CMD_SET_NORMAL;
+	cmd->flags = MMC_RSP_SPI_R1B | MMC_RSP_R1B | MMC_CMD_AC;
+}
+
 int write_extcsd_value(int fd, __u8 index, __u8 value, unsigned int timeout_ms)
 {
 	int ret = 0;
-	struct mmc_ioc_cmd idata;
+	struct mmc_ioc_cmd idata = {};
 
-	memset(&idata, 0, sizeof(idata));
-	idata.write_flag = 1;
-	idata.opcode = MMC_SWITCH;
-	idata.arg = (MMC_SWITCH_MODE_WRITE_BYTE << 24) |
-			(index << 16) |
-			(value << 8) |
-			EXT_CSD_CMD_SET_NORMAL;
-	idata.flags = MMC_RSP_SPI_R1B | MMC_RSP_R1B | MMC_CMD_AC;
+	fill_switch_cmd(&idata, index, value);
+
 	/* Kernel will set cmd_timeout_ms if 0 is set */
 	idata.cmd_timeout_ms = timeout_ms;
 
@@ -2887,13 +2890,8 @@ int do_ffu(int nargs, char **argv)
 	multi_cmd->num_of_cmds = 4;
 
 	/* put device into ffu mode */
-	multi_cmd->cmds[0].opcode = MMC_SWITCH;
-	multi_cmd->cmds[0].arg = (MMC_SWITCH_MODE_WRITE_BYTE << 24) |
-			(EXT_CSD_MODE_CONFIG << 16) |
-			(EXT_CSD_FFU_MODE << 8) |
-			EXT_CSD_CMD_SET_NORMAL;
-	multi_cmd->cmds[0].flags = MMC_RSP_SPI_R1B | MMC_RSP_R1B | MMC_CMD_AC;
-	multi_cmd->cmds[0].write_flag = 1;
+	fill_switch_cmd(&multi_cmd->cmds[0], EXT_CSD_MODE_CONFIG,
+			EXT_CSD_FFU_MODE);
 
 	/* send block count */
 	multi_cmd->cmds[1].opcode = MMC_SET_BLOCK_COUNT;
@@ -2914,13 +2912,8 @@ int do_ffu(int nargs, char **argv)
 	mmc_ioc_cmd_set_data(multi_cmd->cmds[2], buf);
 
 	/* return device into normal mode */
-	multi_cmd->cmds[3].opcode = MMC_SWITCH;
-	multi_cmd->cmds[3].arg = (MMC_SWITCH_MODE_WRITE_BYTE << 24) |
-			(EXT_CSD_MODE_CONFIG << 16) |
-			(EXT_CSD_NORMAL_MODE << 8) |
-			EXT_CSD_CMD_SET_NORMAL;
-	multi_cmd->cmds[3].flags = MMC_RSP_SPI_R1B | MMC_RSP_R1B | MMC_CMD_AC;
-	multi_cmd->cmds[3].write_flag = 1;
+	fill_switch_cmd(&multi_cmd->cmds[3], EXT_CSD_MODE_CONFIG,
+			EXT_CSD_NORMAL_MODE);
 
 	/* read firmware */
 	lseek(img_fd, 0, SEEK_SET);
@@ -2986,15 +2979,8 @@ do_retry:
 	multi_cmd->num_of_cmds = 2;
 
 	/* set ext_csd to install mode */
-	multi_cmd->cmds[1].opcode = MMC_SWITCH;
-	multi_cmd->cmds[1].blksz = 0;
-	multi_cmd->cmds[1].blocks = 0;
-	multi_cmd->cmds[1].arg = (MMC_SWITCH_MODE_WRITE_BYTE << 24) |
-			(EXT_CSD_MODE_OPERATION_CODES << 16) |
-			(EXT_CSD_FFU_INSTALL << 8) |
-			EXT_CSD_CMD_SET_NORMAL;
-	multi_cmd->cmds[1].flags = MMC_RSP_SPI_R1B | MMC_RSP_R1B | MMC_CMD_AC;
-	multi_cmd->cmds[1].write_flag = 1;
+	fill_switch_cmd(&multi_cmd->cmds[1], EXT_CSD_MODE_OPERATION_CODES,
+			EXT_CSD_FFU_INSTALL);
 
 	/* send ioctl with multi-cmd */
 	ret = ioctl(dev_fd, MMC_IOC_MULTI_CMD, multi_cmd);
