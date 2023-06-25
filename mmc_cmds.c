@@ -2880,10 +2880,7 @@ int do_ffu(int nargs, char **argv)
 	}
 
 	/* set CMD ARG */
-	arg = ext_csd[EXT_CSD_FFU_ARG_0] |
-		ext_csd[EXT_CSD_FFU_ARG_1] << 8 |
-		ext_csd[EXT_CSD_FFU_ARG_2] << 16 |
-		ext_csd[EXT_CSD_FFU_ARG_3] << 24;
+	arg = htole32(*((__u32 *)&ext_csd[EXT_CSD_FFU_ARG_0]));
 
 	/* prepare multi_cmd for FFU based on cmd to be used */
 
@@ -2952,10 +2949,7 @@ do_retry:
 	}
 
 	/* Test if we need to restart the download */
-	sect_done = ext_csd[EXT_CSD_NUM_OF_FW_SEC_PROG_0] |
-			ext_csd[EXT_CSD_NUM_OF_FW_SEC_PROG_1] << 8 |
-			ext_csd[EXT_CSD_NUM_OF_FW_SEC_PROG_2] << 16 |
-			ext_csd[EXT_CSD_NUM_OF_FW_SEC_PROG_3] << 24;
+	sect_done = htole32(*((__u32 *)&ext_csd[EXT_CSD_NUM_OF_FW_SEC_PROG_0]));
 	/* By spec, host should re-start download from the first sector if sect_done is 0 */
 	if (sect_done == 0) {
 		if (retry--) {
