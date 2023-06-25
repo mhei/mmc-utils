@@ -2095,11 +2095,12 @@ struct rpmb_frame {
 };
 
 static inline void set_single_cmd(struct mmc_ioc_cmd *ioc, __u32 opcode,
-				  int write_flag, unsigned int blocks)
+				  int write_flag, unsigned int blocks,
+				  __u32 arg)
 {
 	ioc->opcode = opcode;
 	ioc->write_flag = write_flag;
-	ioc->arg = 0x0;
+	ioc->arg = arg;
 	ioc->blksz = 512;
 	ioc->blocks = blocks;
 	ioc->flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_ADTC;
@@ -2152,18 +2153,18 @@ static int do_rpmb_op(int fd,
 
 		/* Write request */
 		ioc = &mioc->cmds[0];
-		set_single_cmd(ioc, MMC_WRITE_MULTIPLE_BLOCK, (1 << 31) | 1, 1);
+		set_single_cmd(ioc, MMC_WRITE_MULTIPLE_BLOCK, (1 << 31) | 1, 1, 0);
 		mmc_ioc_cmd_set_data((*ioc), frame_in);
 
 		/* Result request */
 		ioc = &mioc->cmds[1];
 		frame_status.req_resp = htobe16(MMC_RPMB_READ_RESP);
-		set_single_cmd(ioc, MMC_WRITE_MULTIPLE_BLOCK, 1, 1);
+		set_single_cmd(ioc, MMC_WRITE_MULTIPLE_BLOCK, 1, 1, 0);
 		mmc_ioc_cmd_set_data((*ioc), &frame_status);
 
 		/* Get response */
 		ioc = &mioc->cmds[2];
-		set_single_cmd(ioc, MMC_READ_MULTIPLE_BLOCK, 0, 1);
+		set_single_cmd(ioc, MMC_READ_MULTIPLE_BLOCK, 0, 1, 0);
 		mmc_ioc_cmd_set_data((*ioc), frame_out);
 
 		break;
@@ -2179,12 +2180,12 @@ static int do_rpmb_op(int fd,
 
 		/* Read request */
 		ioc = &mioc->cmds[0];
-		set_single_cmd(ioc, MMC_WRITE_MULTIPLE_BLOCK, 1, 1);
+		set_single_cmd(ioc, MMC_WRITE_MULTIPLE_BLOCK, 1, 1, 0);
 		mmc_ioc_cmd_set_data((*ioc), frame_in);
 
 		/* Get response */
 		ioc = &mioc->cmds[1];
-		set_single_cmd(ioc, MMC_READ_MULTIPLE_BLOCK, 0, out_cnt);
+		set_single_cmd(ioc, MMC_READ_MULTIPLE_BLOCK, 0, out_cnt, 0);
 		mmc_ioc_cmd_set_data((*ioc), frame_out);
 
 		break;
