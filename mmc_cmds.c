@@ -2803,6 +2803,26 @@ out:
 	return ret;
 }
 
+static void set_ffu_single_cmd(struct mmc_ioc_multi_cmd *multi_cmd,
+			       __u8 *ext_csd, unsigned int bytes, __u8 *buf,
+			       off_t offset)
+{
+	__u32 arg = htole32(*((__u32 *)&ext_csd[EXT_CSD_FFU_ARG_0]));
+
+	/* send block count */
+	set_single_cmd(&multi_cmd->cmds[1], MMC_SET_BLOCK_COUNT, 0, 0,
+		       bytes / 512);
+	multi_cmd->cmds[1].flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_AC;
+
+	/*
+	 * send image chunk: blksz and blocks essentially do not matter, as
+	 * long as the product is fw_size, but some hosts don't handle larger
+	 * blksz well.
+	 */
+	set_single_cmd(&multi_cmd->cmds[2], MMC_WRITE_MULTIPLE_BLOCK, 1,
+		       bytes / 512, arg);
+	mmc_ioc_cmd_set_data(multi_cmd->cmds[2], buf + offset);
+}
 
 int do_ffu(int nargs, char **argv)
 {
@@ -2811,7 +2831,6 @@ int do_ffu(int nargs, char **argv)
 	unsigned int sect_size;
 	__u8 ext_csd[512];
 	__u8 *buf = NULL;
-	__u32 arg;
 	off_t fw_size;
 	char *device;
 	struct mmc_ioc_multi_cmd *multi_cmd = NULL;
@@ -2879,35 +2898,15 @@ int do_ffu(int nargs, char **argv)
 		goto out;
 	}
 
-	/* set CMD ARG */
-	arg = htole32(*((__u32 *)&ext_csd[EXT_CSD_FFU_ARG_0]));
-
 	/* prepare multi_cmd for FFU based on cmd to be used */
 
-	/* prepare multi_cmd to be sent */
 	multi_cmd->num_of_cmds = 4;
 
 	/* put device into ffu mode */
 	fill_switch_cmd(&multi_cmd->cmds[0], EXT_CSD_MODE_CONFIG,
 			EXT_CSD_FFU_MODE);
 
-	/* send block count */
-	multi_cmd->cmds[1].opcode = MMC_SET_BLOCK_COUNT;
-	multi_cmd->cmds[1].arg = fw_size / 512;
-	multi_cmd->cmds[1].flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_AC;
-
-	/* send image chunk */
-	multi_cmd->cmds[2].opcode = MMC_WRITE_MULTIPLE_BLOCK;
-	/*
-	 * blksz and blocks essentially do not matter, as long as the product
-	 * is fw_size, but some hosts don't handle larger blksz well.
-	 */
-	multi_cmd->cmds[2].blksz = 512;
-	multi_cmd->cmds[2].blocks = fw_size / 512;
-	multi_cmd->cmds[2].arg = arg;
-	multi_cmd->cmds[2].flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_ADTC;
-	multi_cmd->cmds[2].write_flag = 1;
-	mmc_ioc_cmd_set_data(multi_cmd->cmds[2], buf);
+	set_ffu_single_cmd(multi_cmd, ext_csd, fw_size, buf, 0);
 
 	/* return device into normal mode */
 	fill_switch_cmd(&multi_cmd->cmds[3], EXT_CSD_MODE_CONFIG,
