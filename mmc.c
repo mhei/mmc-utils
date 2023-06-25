@@ -228,8 +228,10 @@ static struct Command commands[] = {
 	  NULL
 	},
 	{ do_ffu, -2,
-	  "ffu", "<image name> <device>\n"
-		"Run Field Firmware Update with <image name> on <device>.\n",
+	  "ffu", "<image name> <device> [chunk-bytes]\n"
+		"Run Field Firmware Update with <image name> on <device>.\n"
+		"[chunk-bytes] is optional and defaults to its max - 512k. "
+		"should be in decimal bytes and sector aligned.\n",
 	  NULL
 	},
 	{ do_erase, -4,
