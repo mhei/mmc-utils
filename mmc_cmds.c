@@ -2831,7 +2831,7 @@ int do_ffu(int nargs, char **argv)
 	unsigned int sect_size;
 	__u8 ext_csd[512];
 	__u8 *buf = NULL;
-	off_t fw_size;
+	off_t fw_size, bytes_left, off;
 	char *device;
 	struct mmc_ioc_multi_cmd *multi_cmd = NULL;
 
@@ -2877,7 +2877,7 @@ int do_ffu(int nargs, char **argv)
 	}
 
 	fw_size = lseek(img_fd, 0, SEEK_END);
-	if (fw_size > MMC_IOC_MAX_BYTES || fw_size == 0) {
+	if (fw_size == 0) {
 		fprintf(stderr, "Wrong firmware size");
 		goto out;
 	}
@@ -2906,8 +2906,6 @@ int do_ffu(int nargs, char **argv)
 	fill_switch_cmd(&multi_cmd->cmds[0], EXT_CSD_MODE_CONFIG,
 			EXT_CSD_FFU_MODE);
 
-	set_ffu_single_cmd(multi_cmd, ext_csd, fw_size, buf, 0);
-
 	/* return device into normal mode */
 	fill_switch_cmd(&multi_cmd->cmds[3], EXT_CSD_MODE_CONFIG,
 			EXT_CSD_NORMAL_MODE);
@@ -2921,14 +2919,30 @@ int do_ffu(int nargs, char **argv)
 	}
 
 do_retry:
-	/* send ioctl with multi-cmd */
-	ret = ioctl(dev_fd, MMC_IOC_MULTI_CMD, multi_cmd);
+	bytes_left = fw_size;
+	off = 0;
+	while (bytes_left) {
+		unsigned int chunk_size = bytes_left < MMC_IOC_MAX_BYTES ?
+					  bytes_left : MMC_IOC_MAX_BYTES;
 
-	if (ret) {
-		perror("Multi-cmd ioctl");
-		/* In case multi-cmd ioctl failed before exiting from ffu mode */
-		ioctl(dev_fd, MMC_IOC_CMD, &multi_cmd->cmds[3]);
-		goto out;
+		/* prepare multi_cmd for FFU based on cmd to be used */
+		set_ffu_single_cmd(multi_cmd, ext_csd, chunk_size, buf, off);
+
+		/* send ioctl with multi-cmd */
+		ret = ioctl(dev_fd, MMC_IOC_MULTI_CMD, multi_cmd);
+
+		if (ret) {
+			perror("Multi-cmd ioctl");
+			/*
+			 * In case multi-cmd ioctl failed before exiting from
+			 * ffu mode
+			 */
+			ioctl(dev_fd, MMC_IOC_CMD, &multi_cmd->cmds[3]);
+			goto out;
+		}
+
+		bytes_left -= chunk_size;
+		off += chunk_size;
 	}
 
 	/*
