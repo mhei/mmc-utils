@@ -34,6 +34,10 @@
 #include "mmc_cmds.h"
 #include "3rdparty/hmac_sha/hmac_sha2.h"
 
+#ifndef MMC_IOC_MULTI_CMD
+#error "mmc-utils needs MMC_IOC_MULTI_CMD support (added in kernel v4.4)"
+#endif
+
 #ifndef offsetof
 #define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
 #endif
@@ -75,19 +79,22 @@ int read_extcsd(int fd, __u8 *ext_csd)
 	return ret;
 }
 
+static void fill_switch_cmd(struct mmc_ioc_cmd *cmd, __u8 index, __u8 value)
+{
+	cmd->opcode = MMC_SWITCH;
+	cmd->write_flag = 1;
+	cmd->arg = (MMC_SWITCH_MODE_WRITE_BYTE << 24) | (index << 16) |
+		   (value << 8) | EXT_CSD_CMD_SET_NORMAL;
+	cmd->flags = MMC_RSP_SPI_R1B | MMC_RSP_R1B | MMC_CMD_AC;
+}
+
 int write_extcsd_value(int fd, __u8 index, __u8 value, unsigned int timeout_ms)
 {
 	int ret = 0;
-	struct mmc_ioc_cmd idata;
+	struct mmc_ioc_cmd idata = {};
 
-	memset(&idata, 0, sizeof(idata));
-	idata.write_flag = 1;
-	idata.opcode = MMC_SWITCH;
-	idata.arg = (MMC_SWITCH_MODE_WRITE_BYTE << 24) |
-			(index << 16) |
-			(value << 8) |
-			EXT_CSD_CMD_SET_NORMAL;
-	idata.flags = MMC_RSP_SPI_R1B | MMC_RSP_R1B | MMC_CMD_AC;
+	fill_switch_cmd(&idata, index, value);
+
 	/* Kernel will set cmd_timeout_ms if 0 is set */
 	idata.cmd_timeout_ms = timeout_ms;
 
@@ -2088,11 +2095,12 @@ struct rpmb_frame {
 };
 
 static inline void set_single_cmd(struct mmc_ioc_cmd *ioc, __u32 opcode,
-				  int write_flag, unsigned int blocks)
+				  int write_flag, unsigned int blocks,
+				  __u32 arg)
 {
 	ioc->opcode = opcode;
 	ioc->write_flag = write_flag;
-	ioc->arg = 0x0;
+	ioc->arg = arg;
 	ioc->blksz = 512;
 	ioc->blocks = blocks;
 	ioc->flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_ADTC;
@@ -2112,11 +2120,6 @@ static int do_rpmb_op(int fd,
 					  struct rpmb_frame *frame_out,
 					  unsigned int out_cnt)
 {
-#ifndef MMC_IOC_MULTI_CMD
-	fprintf(stderr, "mmc-utils has been compiled without MMC_IOC_MULTI_CMD"
-		" support, needed by RPMB operation.\n");
-	exit(1);
-#else
 	int err;
 	u_int16_t rpmb_type;
 	struct mmc_ioc_multi_cmd *mioc;
@@ -2150,18 +2153,18 @@ static int do_rpmb_op(int fd,
 
 		/* Write request */
 		ioc = &mioc->cmds[0];
-		set_single_cmd(ioc, MMC_WRITE_MULTIPLE_BLOCK, (1 << 31) | 1, 1);
+		set_single_cmd(ioc, MMC_WRITE_MULTIPLE_BLOCK, (1 << 31) | 1, 1, 0);
 		mmc_ioc_cmd_set_data((*ioc), frame_in);
 
 		/* Result request */
 		ioc = &mioc->cmds[1];
 		frame_status.req_resp = htobe16(MMC_RPMB_READ_RESP);
-		set_single_cmd(ioc, MMC_WRITE_MULTIPLE_BLOCK, 1, 1);
+		set_single_cmd(ioc, MMC_WRITE_MULTIPLE_BLOCK, 1, 1, 0);
 		mmc_ioc_cmd_set_data((*ioc), &frame_status);
 
 		/* Get response */
 		ioc = &mioc->cmds[2];
-		set_single_cmd(ioc, MMC_READ_MULTIPLE_BLOCK, 0, 1);
+		set_single_cmd(ioc, MMC_READ_MULTIPLE_BLOCK, 0, 1, 0);
 		mmc_ioc_cmd_set_data((*ioc), frame_out);
 
 		break;
@@ -2177,12 +2180,12 @@ static int do_rpmb_op(int fd,
 
 		/* Read request */
 		ioc = &mioc->cmds[0];
-		set_single_cmd(ioc, MMC_WRITE_MULTIPLE_BLOCK, 1, 1);
+		set_single_cmd(ioc, MMC_WRITE_MULTIPLE_BLOCK, 1, 1, 0);
 		mmc_ioc_cmd_set_data((*ioc), frame_in);
 
 		/* Get response */
 		ioc = &mioc->cmds[1];
-		set_single_cmd(ioc, MMC_READ_MULTIPLE_BLOCK, 0, out_cnt);
+		set_single_cmd(ioc, MMC_READ_MULTIPLE_BLOCK, 0, out_cnt, 0);
 		mmc_ioc_cmd_set_data((*ioc), frame_out);
 
 		break;
@@ -2196,7 +2199,6 @@ static int do_rpmb_op(int fd,
 out:
 	free(mioc);
 	return err;
-#endif /* !MMC_IOC_MULTI_CMD */
 }
 
 int do_rpmb_write_key(int nargs, char **argv)
@@ -2801,28 +2803,40 @@ out:
 	return ret;
 }
 
+static void set_ffu_single_cmd(struct mmc_ioc_multi_cmd *multi_cmd,
+			       __u8 *ext_csd, unsigned int bytes, __u8 *buf,
+			       off_t offset)
+{
+	__u32 arg = htole32(*((__u32 *)&ext_csd[EXT_CSD_FFU_ARG_0]));
+
+	/* send block count */
+	set_single_cmd(&multi_cmd->cmds[1], MMC_SET_BLOCK_COUNT, 0, 0,
+		       bytes / 512);
+	multi_cmd->cmds[1].flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_AC;
+
+	/*
+	 * send image chunk: blksz and blocks essentially do not matter, as
+	 * long as the product is fw_size, but some hosts don't handle larger
+	 * blksz well.
+	 */
+	set_single_cmd(&multi_cmd->cmds[2], MMC_WRITE_MULTIPLE_BLOCK, 1,
+		       bytes / 512, arg);
+	mmc_ioc_cmd_set_data(multi_cmd->cmds[2], buf + offset);
+}
 
 int do_ffu(int nargs, char **argv)
 {
-#ifndef MMC_IOC_MULTI_CMD
-	fprintf(stderr, "mmc-utils has been compiled without MMC_IOC_MULTI_CMD"
-			" support, needed by FFU.\n");
-	exit(1);
-#else
 	int dev_fd, img_fd;
 	int sect_done = 0, retry = 3, ret = -EINVAL;
 	unsigned int sect_size;
 	__u8 ext_csd[512];
 	__u8 *buf = NULL;
-	__u32 arg;
-	off_t fw_size;
+	off_t fw_size, bytes_left, off;
 	char *device;
 	struct mmc_ioc_multi_cmd *multi_cmd = NULL;
+	unsigned int default_chunk = MMC_IOC_MAX_BYTES;
 
-	if (nargs != 3) {
-		fprintf(stderr, "Usage: ffu <image name> </path/to/mmcblkX> \n");
-		exit(1);
-	}
+	assert (nargs == 3 || nargs == 4);
 
 	device = argv[2];
 	dev_fd = open(device, O_RDWR);
@@ -2861,7 +2875,7 @@ int do_ffu(int nargs, char **argv)
 	}
 
 	fw_size = lseek(img_fd, 0, SEEK_END);
-	if (fw_size > MMC_IOC_MAX_BYTES || fw_size == 0) {
+	if (fw_size == 0) {
 		fprintf(stderr, "Wrong firmware size");
 		goto out;
 	}
@@ -2882,52 +2896,25 @@ int do_ffu(int nargs, char **argv)
 		goto out;
 	}
 
-	/* set CMD ARG */
-	arg = ext_csd[EXT_CSD_FFU_ARG_0] |
-		ext_csd[EXT_CSD_FFU_ARG_1] << 8 |
-		ext_csd[EXT_CSD_FFU_ARG_2] << 16 |
-		ext_csd[EXT_CSD_FFU_ARG_3] << 24;
+	if (nargs == 4) {
+		default_chunk = strtol(argv[3], NULL, 10);
+		if (default_chunk > MMC_IOC_MAX_BYTES || default_chunk % 512) {
+			fprintf(stderr, "Invalid chunk size");
+			goto out;
+		}
+	}
 
 	/* prepare multi_cmd for FFU based on cmd to be used */
 
-	/* prepare multi_cmd to be sent */
 	multi_cmd->num_of_cmds = 4;
 
 	/* put device into ffu mode */
-	multi_cmd->cmds[0].opcode = MMC_SWITCH;
-	multi_cmd->cmds[0].arg = (MMC_SWITCH_MODE_WRITE_BYTE << 24) |
-			(EXT_CSD_MODE_CONFIG << 16) |
-			(EXT_CSD_FFU_MODE << 8) |
-			EXT_CSD_CMD_SET_NORMAL;
-	multi_cmd->cmds[0].flags = MMC_RSP_SPI_R1B | MMC_RSP_R1B | MMC_CMD_AC;
-	multi_cmd->cmds[0].write_flag = 1;
-
-	/* send block count */
-	multi_cmd->cmds[1].opcode = MMC_SET_BLOCK_COUNT;
-	multi_cmd->cmds[1].arg = fw_size / 512;
-	multi_cmd->cmds[1].flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_AC;
-
-	/* send image chunk */
-	multi_cmd->cmds[2].opcode = MMC_WRITE_MULTIPLE_BLOCK;
-	/*
-	 * blksz and blocks essentially do not matter, as long as the product
-	 * is fw_size, but some hosts don't handle larger blksz well.
-	 */
-	multi_cmd->cmds[2].blksz = 512;
-	multi_cmd->cmds[2].blocks = fw_size / 512;
-	multi_cmd->cmds[2].arg = arg;
-	multi_cmd->cmds[2].flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_ADTC;
-	multi_cmd->cmds[2].write_flag = 1;
-	mmc_ioc_cmd_set_data(multi_cmd->cmds[2], buf);
+	fill_switch_cmd(&multi_cmd->cmds[0], EXT_CSD_MODE_CONFIG,
+			EXT_CSD_FFU_MODE);
 
 	/* return device into normal mode */
-	multi_cmd->cmds[3].opcode = MMC_SWITCH;
-	multi_cmd->cmds[3].arg = (MMC_SWITCH_MODE_WRITE_BYTE << 24) |
-			(EXT_CSD_MODE_CONFIG << 16) |
-			(EXT_CSD_NORMAL_MODE << 8) |
-			EXT_CSD_CMD_SET_NORMAL;
-	multi_cmd->cmds[3].flags = MMC_RSP_SPI_R1B | MMC_RSP_R1B | MMC_CMD_AC;
-	multi_cmd->cmds[3].write_flag = 1;
+	fill_switch_cmd(&multi_cmd->cmds[3], EXT_CSD_MODE_CONFIG,
+			EXT_CSD_NORMAL_MODE);
 
 	/* read firmware */
 	lseek(img_fd, 0, SEEK_SET);
@@ -2938,14 +2925,30 @@ int do_ffu(int nargs, char **argv)
 	}
 
 do_retry:
-	/* send ioctl with multi-cmd */
-	ret = ioctl(dev_fd, MMC_IOC_MULTI_CMD, multi_cmd);
+	bytes_left = fw_size;
+	off = 0;
+	while (bytes_left) {
+		unsigned int chunk_size = bytes_left < default_chunk ?
+					  bytes_left : default_chunk;
 
-	if (ret) {
-		perror("Multi-cmd ioctl");
-		/* In case multi-cmd ioctl failed before exiting from ffu mode */
-		ioctl(dev_fd, MMC_IOC_CMD, &multi_cmd->cmds[3]);
-		goto out;
+		/* prepare multi_cmd for FFU based on cmd to be used */
+		set_ffu_single_cmd(multi_cmd, ext_csd, chunk_size, buf, off);
+
+		/* send ioctl with multi-cmd */
+		ret = ioctl(dev_fd, MMC_IOC_MULTI_CMD, multi_cmd);
+
+		if (ret) {
+			perror("Multi-cmd ioctl");
+			/*
+			 * In case multi-cmd ioctl failed before exiting from
+			 * ffu mode
+			 */
+			ioctl(dev_fd, MMC_IOC_CMD, &multi_cmd->cmds[3]);
+			goto out;
+		}
+
+		bytes_left -= chunk_size;
+		off += chunk_size;
 	}
 
 	/*
@@ -2965,10 +2968,7 @@ do_retry:
 	}
 
 	/* Test if we need to restart the download */
-	sect_done = ext_csd[EXT_CSD_NUM_OF_FW_SEC_PROG_0] |
-			ext_csd[EXT_CSD_NUM_OF_FW_SEC_PROG_1] << 8 |
-			ext_csd[EXT_CSD_NUM_OF_FW_SEC_PROG_2] << 16 |
-			ext_csd[EXT_CSD_NUM_OF_FW_SEC_PROG_3] << 24;
+	sect_done = htole32(*((__u32 *)&ext_csd[EXT_CSD_NUM_OF_FW_SEC_PROG_0]));
 	/* By spec, host should re-start download from the first sector if sect_done is 0 */
 	if (sect_done == 0) {
 		if (retry--) {
@@ -2993,15 +2993,8 @@ do_retry:
 	multi_cmd->num_of_cmds = 2;
 
 	/* set ext_csd to install mode */
-	multi_cmd->cmds[1].opcode = MMC_SWITCH;
-	multi_cmd->cmds[1].blksz = 0;
-	multi_cmd->cmds[1].blocks = 0;
-	multi_cmd->cmds[1].arg = (MMC_SWITCH_MODE_WRITE_BYTE << 24) |
-			(EXT_CSD_MODE_OPERATION_CODES << 16) |
-			(EXT_CSD_FFU_INSTALL << 8) |
-			EXT_CSD_CMD_SET_NORMAL;
-	multi_cmd->cmds[1].flags = MMC_RSP_SPI_R1B | MMC_RSP_R1B | MMC_CMD_AC;
-	multi_cmd->cmds[1].write_flag = 1;
+	fill_switch_cmd(&multi_cmd->cmds[1], EXT_CSD_MODE_OPERATION_CODES,
+			EXT_CSD_FFU_INSTALL);
 
 	/* send ioctl with multi-cmd */
 	ret = ioctl(dev_fd, MMC_IOC_MULTI_CMD, multi_cmd);
@@ -3034,7 +3027,6 @@ out:
 	close(img_fd);
 	close(dev_fd);
 	return ret;
-#endif
 }
 
 int do_general_cmd_read(int nargs, char **argv)

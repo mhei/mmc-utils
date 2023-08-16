@@ -241,6 +241,11 @@ struct ids_database database[] = {
 	},
 	{
 		.type = "mmc",
+		.id = 0x45,
+		.manufacturer = "SanDisk Corporation",
+	},
+	{
+		.type = "mmc",
 		.id = 0x2c,
 		.manufacturer = "Kingston",
 	},
@@ -631,10 +636,10 @@ void print_mmc_cid(struct config *config, char *cid)
 		printf("\tCRC: 0x%02x\n", crc);
 	} else {
 		if (config->mmc_ids[mid])
-			printf("manufacturer: '%s' '%c'\n",
-			       config->mmc_ids[mid], oid);
+			printf("manufacturer: 0x%02x (%s) oid: 0x%01x\n",
+			       mid, config->mmc_ids[mid], oid);
 		else
-			printf("manufacturer: 'Unlisted' '%c'\n", oid);
+			printf("manufacturer: 0x%02x (Unlisted) oid: 0x%01x\n", mid, oid);
 
 		printf("product: '%s' %u.%u\n", pnm, prv_major, prv_minor);
 		printf("serial: 0x%08x\n", psn);

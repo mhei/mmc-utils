@@ -26,8 +26,6 @@
 
 #include "mmc_cmds.h"
 
-#define MMC_VERSION	"0.1"
-
 #define BASIC_HELP 0
 #define ADVANCED_HELP 1
 
@@ -230,8 +228,10 @@ static struct Command commands[] = {
 	  NULL
 	},
 	{ do_ffu, -2,
-	  "ffu", "<image name> <device>\n"
-		"Run Field Firmware Update with <image name> on <device>.\n",
+	  "ffu", "<image name> <device> [chunk-bytes]\n"
+		"Run Field Firmware Update with <image name> on <device>.\n"
+		"[chunk-bytes] is optional and defaults to its max - 512k. "
+		"should be in decimal bytes and sector aligned.\n",
 	  NULL
 	},
 	{ do_erase, -4,
@@ -319,7 +319,7 @@ static void help(char *np)
 
 	printf("\n\t%s help|--help|-h\n\t\tShow the help.\n",np);
 	printf("\n\t%s <cmd> --help\n\t\tShow detailed help for a command or subset of commands.\n",np);
-	printf("\n%s\n", MMC_VERSION);
+	printf("\n%s\n", VERSION);
 }
 
 static int split_command(char *cmd, char ***commands)
@@ -500,7 +500,7 @@ static int parse_args(int argc, char **argv,
 	}
 
 	if(helprequested){
-		printf("\n%s\n", MMC_VERSION);
+		printf("\n%s\n", VERSION);
 		return 0;
 	}
 
