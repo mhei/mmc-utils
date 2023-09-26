@@ -2373,7 +2373,6 @@ int lsmmc_main(struct config *config, int argc, char **argv)
 {
 	int ret;
 
-	memset(config, 0, sizeof(*config));
 	config->mmc_ids = calloc(IDS_MAX, sizeof(char *));
 	config->sd_ids = calloc(IDS_MAX, sizeof(char *));
 	if (!config->mmc_ids || !config->sd_ids) {
@@ -2395,71 +2394,51 @@ void lsmmc_free(struct config *config)
 	free(config->dir);
 }
 
-int do_read_csd(int argc, char **argv)
+static int do_read_reg(int argc, char **argv, enum REG_TYPE reg)
 {
-	struct config config;
+	struct config cfg = {};
 	int ret;
 
+	ret = lsmmc_main(&cfg, argc, argv);
+	if (ret)
+		goto out;
+
+	if (cfg.dir)
+		ret = process_dir(&cfg, reg);
+
+out:
+	lsmmc_free(&cfg);
+
+	return ret;
+
+}
+
+int do_read_csd(int argc, char **argv)
+{
 	if (argc != 2 && argc != 3) {
 		fprintf(stderr, "Usage: Print CSD data from <device path>.\n");
 		exit(1);
 	}
 
-	ret = lsmmc_main(&config, argc, argv);
-	if (ret)
-		goto out;
-
-	if (config.dir)
-		ret = process_dir(&config, CSD);
-
-out:
-	lsmmc_free(&config);
-
-	return ret;
+	return do_read_reg(argc, argv, CSD);
 }
 
 int do_read_cid(int argc, char **argv)
 {
-	struct config config;
-	int ret;
-
 	if (argc != 2 && argc != 3) {
 		fprintf(stderr, "Usage: Print CID data from <device path>.\n");
 		exit(1);
 	}
 
-	ret = lsmmc_main(&config, argc, argv);
-	if (ret)
-		goto out;
-
-	if (config.dir)
-		ret = process_dir(&config, CID);
-
-out:
-	lsmmc_free(&config);
-
-	return ret;
+	return do_read_reg(argc, argv, CID);
 }
 
 int do_read_scr(int argc, char **argv)
 {
-	struct config config;
-	int ret;
-
 	if (argc != 2 && argc != 3) {
 		fprintf(stderr, "Usage: Print SCR data from <device path>.\n");
 		exit(1);
 	}
 
-	ret = lsmmc_main(&config, argc, argv);
-	if (ret)
-		goto out;
-
-	if (config.dir)
-		ret = process_dir(&config, SCR);
-
-out:
-	lsmmc_free(&config);
-
-	return ret;
+	return do_read_reg(argc, argv, SCR);
 }
