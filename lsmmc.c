@@ -1826,6 +1826,9 @@ static void print_mmc_csd_capacity(unsigned int c_size, unsigned int c_size_mult
 	int block_len = 1 << read_bl_len;
 	unsigned long long memory_capacity;
 
+	if (c_size == 0xfff)
+		return;
+
 	printf("\tC_SIZE: 0x%03x\n", c_size);
 	printf("\tC_SIZE_MULT: 0x%01x\n", c_size_mult);
 
