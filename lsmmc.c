@@ -77,7 +77,6 @@ enum REG_TYPE {
 	CID = 0,
 	CSD,
 	SCR,
-	EXT_CSD,
 };
 
 struct ids_database {
@@ -2217,29 +2216,10 @@ void print_sd_scr(struct config *config, char *scr)
 	}
 }
 
-/* MMC/SD interface processing functions */
-void print_info(struct config *config, char *type,
-	char *cid, char *csd, char *scr, char *ext_csd)
-{
-	printf("type: '%s'\n", type);
-
-	if (!strcmp(type, "SD") && cid)
-		print_sd_cid(config, cid);
-	else if (!strcmp(type, "MMC") && cid)
-		print_mmc_cid(config, cid);
-
-	if (!strcmp(type, "SD") && scr)
-		print_sd_scr(config, scr);
-
-	if (!strcmp(type, "MMC") && csd)
-		print_mmc_csd(config, csd);
-	else if (!strcmp(type, "SD") && csd)
-		print_sd_csd(config, csd);
-}
-
 int process_dir(struct config *config, enum REG_TYPE reg)
 {
-	char *type = NULL, *cid = NULL, *csd = NULL, *scr = NULL, *ext_csd = NULL;
+	char *type = NULL;
+	char *reg_content = NULL;
 	int ret = 0;
 
 	if (chdir(config->dir) < 0) {
@@ -2267,29 +2247,41 @@ int process_dir(struct config *config, enum REG_TYPE reg)
 
 	switch (reg) {
 	case CID:
-		cid = read_file("cid");
-		if (!cid) {
+		reg_content = read_file("cid");
+		if (!reg_content) {
 			fprintf(stderr,
 				"Could not read card identity in directory '%s'.\n",
 				config->dir);
 			ret = -1;
 			goto err;
 		}
+
+		if (config->bus == SD)
+			print_sd_cid(config, reg_content);
+		else
+			print_mmc_cid(config, reg_content);
+
 		break;
 	case CSD:
-		csd = read_file("csd");
-		if (!csd) {
+		reg_content = read_file("csd");
+		if (!reg_content) {
 			fprintf(stderr,
 				"Could not read card specific data in "
 				"directory '%s'.\n", config->dir);
 			ret = -1;
 			goto err;
 		}
+
+		if (config->bus == SD)
+			print_sd_csd(config, reg_content);
+		else
+			print_mmc_csd(config, reg_content);
+
 		break;
 	case SCR:
 		if (!strcmp(type, "SD")) {
-			scr = read_file("scr");
-			if (!scr) {
+			reg_content = read_file("scr");
+			if (!reg_content) {
 				fprintf(stderr, "Could not read SD card "
 					"configuration in directory '%s'.\n",
 					config->dir);
@@ -2297,30 +2289,16 @@ int process_dir(struct config *config, enum REG_TYPE reg)
 				goto err;
 			}
 		}
-		break;
-	case EXT_CSD:
-		if (!strcmp(type, "MMC")) {
-			ext_csd = read_file("ext_csd");
-			if (!ext_csd) {
-				fprintf(stderr, "Could not read extra specific "
-					"data in directory '%s'.\n",
-					config->dir);
-				ret = -1;
-				goto err;
-			}
-		}
+
+		print_sd_scr(config, reg_content);
+
 		break;
 	default:
 		goto err;
 	}
 
-	print_info(config, type, cid, csd, scr, ext_csd);
-
 err:
-	free(ext_csd);
-	free(scr);
-	free(csd);
-	free(cid);
+	free(reg_content);
 	free(type);
 
 	return ret;
