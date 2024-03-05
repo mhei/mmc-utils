@@ -58,6 +58,11 @@
 #define WPTYPE_PWRON 2
 #define WPTYPE_PERM 3
 
+static inline __u32 per_byte_htole32(__u8 *arr)
+{
+	return arr[0] | arr[1] << 8 | arr[2] << 16 | arr[3] << 24;
+}
+
 int read_extcsd(int fd, __u8 *ext_csd)
 {
 	int ret = 0;
@@ -2807,7 +2812,7 @@ static void set_ffu_single_cmd(struct mmc_ioc_multi_cmd *multi_cmd,
 			       __u8 *ext_csd, unsigned int bytes, __u8 *buf,
 			       off_t offset)
 {
-	__u32 arg = htole32(*((__u32 *)&ext_csd[EXT_CSD_FFU_ARG_0]));
+	__u32 arg = per_byte_htole32(&ext_csd[EXT_CSD_FFU_ARG_0]);
 
 	/* send block count */
 	set_single_cmd(&multi_cmd->cmds[1], MMC_SET_BLOCK_COUNT, 0, 0,
@@ -2827,7 +2832,7 @@ static void set_ffu_single_cmd(struct mmc_ioc_multi_cmd *multi_cmd,
 int do_ffu(int nargs, char **argv)
 {
 	int dev_fd, img_fd;
-	int sect_done = 0, retry = 3, ret = -EINVAL;
+	int retry = 3, ret = -EINVAL;
 	unsigned int sect_size;
 	__u8 ext_csd[512];
 	__u8 *buf = NULL;
@@ -2835,6 +2840,7 @@ int do_ffu(int nargs, char **argv)
 	char *device;
 	struct mmc_ioc_multi_cmd *multi_cmd = NULL;
 	unsigned int default_chunk = MMC_IOC_MAX_BYTES;
+	__u32 sect_done = 0;
 
 	assert (nargs == 3 || nargs == 4);
 
@@ -2968,7 +2974,7 @@ do_retry:
 	}
 
 	/* Test if we need to restart the download */
-	sect_done = htole32(*((__u32 *)&ext_csd[EXT_CSD_NUM_OF_FW_SEC_PROG_0]));
+	sect_done = per_byte_htole32(&ext_csd[EXT_CSD_NUM_OF_FW_SEC_PROG_0]);
 	/* By spec, host should re-start download from the first sector if sect_done is 0 */
 	if (sect_done == 0) {
 		if (retry--) {
