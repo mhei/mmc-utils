@@ -21,6 +21,7 @@ prefix ?= /usr/local
 bindir = $(prefix)/bin
 LIBS=
 RESTORE_LIBS=
+mandir = /usr/share/man
 
 progs = mmc
 
@@ -29,7 +30,7 @@ ifdef C
 	check = sparse $(CHECKFLAGS)
 endif
 
-all: $(progs) manpages
+all: $(progs)
 
 .c.o:
 ifdef C
@@ -43,16 +44,14 @@ mmc: $(objects)
 manpages:
 	$(MAKE) -C man
 
-install-man:
-	$(MAKE) -C man install
-
 clean:
 	rm -f $(progs) $(objects)
 	$(MAKE) -C man clean
 
-install: $(progs) install-man
+install: $(progs)
 	$(INSTALL) -m755 -d $(DESTDIR)$(bindir)
 	$(INSTALL) $(progs) $(DESTDIR)$(bindir)
+	$(INSTALL) -m 644 mmc.1 $(DESTDIR)$(mandir)/man1
 
 -include $(foreach obj,$(objects), $(dir $(obj))/.$(notdir $(obj)).d)
 
