@@ -12,12 +12,16 @@ process used for the Linux kernel itself.
 One can document themselves by reading how to submit a patch in the official
 Linux kernel documentation:
 https://www.kernel.org/doc/html/latest/process/submitting-patches.html
-
 Not all sections apply but it should be a good way to get started.
 
 A patch should be sent as a mail (not as an attachement, see documentation
 above) to the linux-mmc@vger.kernel.org mailing list with maintainers as
 Cc recipients.
+
+Documentation
+-------------
+https://mmc-utils.readthedocs.io/en/latest/
+
 
 Maintainers
 -----------
