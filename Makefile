@@ -47,6 +47,7 @@ manpages:
 clean:
 	rm -f $(progs) $(objects)
 	$(MAKE) -C man clean
+	$(MAKE) -C docs clean
 
 install: $(progs)
 	$(INSTALL) -m755 -d $(DESTDIR)$(bindir)
@@ -56,3 +57,7 @@ install: $(progs)
 -include $(foreach obj,$(objects), $(dir $(obj))/.$(notdir $(obj)).d)
 
 .PHONY: all clean install manpages install-man
+
+# Add this new target for building HTML documentation using docs/Makefile
+html-docs:
+	$(MAKE) -C docs html
