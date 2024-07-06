@@ -25,9 +25,10 @@ mandir = /usr/share/man
 
 progs = mmc
 
-# make C=1 to enable sparse
+# make C=1 to enable sparse - default
+C ?= 1
 ifdef C
-	check = sparse $(CHECKFLAGS)
+	check = sparse $(CHECKFLAGS) $(AM_CFLAGS)
 endif
 
 all: $(progs)

@@ -47,6 +47,7 @@
 #include <unistd.h>
 
 #include "mmc.h"
+#include "mmc_cmds.h"
 
 #define MASKTOBIT0(high)	\
 	((high >= 0) ? ((1ull << ((high) + 1ull)) - 1ull) : 0ull)
@@ -231,7 +232,7 @@ static struct ids_database mmc_database[] = {
 };
 
 /* Command line parsing functions */
-void usage(void)
+static void usage(void)
 {
 	printf("Usage: print mmc [-h] [-v] <device path ...>\n");
 	printf("\n");
@@ -240,7 +241,7 @@ void usage(void)
 	printf("\t-v\tEnable verbose mode.\n");
 }
 
-int parse_opts(int argc, char **argv, struct config *config)
+static int parse_opts(int argc, char **argv, struct config *config)
 {
 	int c;
 
@@ -302,7 +303,7 @@ static char *get_manufacturer(struct config *config, unsigned int manid)
 }
 
 /* MMC/SD file parsing functions */
-char *read_file(char *name)
+static char *read_file(char *name)
 {
 	char line[4096];
 	char *preparsed, *start = line;
@@ -352,7 +353,7 @@ char *read_file(char *name)
 }
 
 /* Hexadecimal string parsing functions */
-char *to_binstr(char *hexstr)
+static char *to_binstr(char *hexstr)
 {
 	char *bindigits[] = {
 		"0000", "0001", "0010", "0011", "0100", "0101", "0110", "0111",
@@ -386,7 +387,7 @@ char *to_binstr(char *hexstr)
 	return binstr;
 }
 
-void bin_to_unsigned(unsigned int *u, char *binstr, int width)
+static void bin_to_unsigned(unsigned int *u, char *binstr, int width)
 {
 	*u = 0;
 	assert(width <= 32);
@@ -400,7 +401,7 @@ void bin_to_unsigned(unsigned int *u, char *binstr, int width)
 	}
 }
 
-void bin_to_ascii(char *a, char *binstr, int width)
+static void bin_to_ascii(char *a, char *binstr, int width)
 {
 	assert(width % 8 == 0);
 	*a = '\0';
@@ -419,7 +420,7 @@ void bin_to_ascii(char *a, char *binstr, int width)
 	}
 }
 
-void parse_bin(char *hexstr, char *fmt, ...)
+static void parse_bin(char *hexstr, char *fmt, ...)
 {
 	va_list args;
 	char *origstr;
@@ -470,7 +471,7 @@ void parse_bin(char *hexstr, char *fmt, ...)
 }
 
 /* MMC/SD information parsing functions */
-void print_sd_cid(struct config *config, char *cid)
+static void print_sd_cid(struct config *config, char *cid)
 {
 	static const char *months[] = {
 		"jan", "feb", "mar", "apr", "may", "jun",
@@ -528,7 +529,7 @@ void print_sd_cid(struct config *config, char *cid)
 	}
 }
 
-void print_mmc_cid(struct config *config, char *cid)
+static void print_mmc_cid(struct config *config, char *cid)
 {
 	static const char *months[] = {
 		"jan", "feb", "mar", "apr", "may", "jun",
@@ -602,7 +603,7 @@ void print_mmc_cid(struct config *config, char *cid)
 	}
 }
 
-void print_sd_csd(struct config *config, char *csd)
+static void print_sd_csd(struct config *config, char *csd)
 {
 	unsigned int csd_structure;
 	unsigned int taac_timevalue;
@@ -1941,128 +1942,7 @@ static void print_mmc_csd(struct config *config, char *csd)
 	}
 }
 
-char *speed_class_speed(unsigned char id, bool ddr)
-{
-	if (ddr) {
-		switch (id) {
-		case 0x00: return "<4.8MB/s";
-		case 0x08: return " 4.8MB/s";
-		case 0x0a: return " 6.0MB/s";
-		case 0x0f: return " 9.0MB/s";
-		case 0x14: return "12.0MB/s";
-		case 0x1e: return "18.0MB/s";
-		case 0x28: return "24.0MB/s";
-		case 0x32: return "30.0MB/s";
-		case 0x3c: return "36.0MB/s";
-		case 0x46: return "42.0MB/s";
-		case 0x50: return "48.0MB/s";
-		case 0x64: return "60.0MB/s";
-		case 0x78: return "72.0MB/s";
-		case 0x8c: return "84.0MB/s";
-		case 0xa0: return "96.0MB/s";
-		default: return "??.?MB/s";
-		}
-	} else {
-		switch (id) {
-		case 0x00: return "<2.4MB/s";
-		case 0x08: return " 2.4MB/s";
-		case 0x0a: return " 3.0MB/s";
-		case 0x0f: return " 4.5MB/s";
-		case 0x14: return " 6.0MB/s";
-		case 0x1e: return " 9.0MB/s";
-		case 0x28: return "12.0MB/s";
-		case 0x32: return "15.0MB/s";
-		case 0x3c: return "18.0MB/s";
-		case 0x46: return "21.0MB/s";
-		case 0x50: return "24.0MB/s";
-		case 0x64: return "30.0MB/s";
-		case 0x78: return "36.0MB/s";
-		case 0x8c: return "42.0MB/s";
-		case 0xa0: return "48.0MB/s";
-		default: return "??.?MB/s";
-		}
-	}
-}
-
-char speed_class_name(unsigned char id)
-{
-	switch (id) {
-	case 0x00: return '?';
-	case 0x08: return 'A';
-	case 0x0a: return 'B';
-	case 0x0f: return 'C';
-	case 0x14: return 'D';
-	case 0x1e: return 'E';
-	case 0x28: return 'F';
-	case 0x32: return 'G';
-	case 0x3c: return 'H';
-	case 0x46: return 'J';
-	case 0x50: return 'K';
-	case 0x64: return 'M';
-	case 0x78: return 'O';
-	case 0x8c: return 'R';
-	case 0xa0: return 'T';
-	default: return '?';
-	}
-}
-
-char *power_class_consumption(unsigned int id, bool volt360)
-{
-	if (volt360) {
-		switch (id) {
-		case 0x0: return "100-200mA";
-		case 0x1: return "120-220mA";
-		case 0x2: return "150-250mA";
-		case 0x3: return "180-280mA";
-		case 0x4: return "200-300mA";
-		case 0x5: return "220-320mA";
-		case 0x6: return "250-350mA";
-		case 0x7: return "300-400mA";
-		case 0x8: return "350-450mA";
-		case 0x9: return "400-500mA";
-		case 0xa: return "450-550mA";
-		default: return "reserved";
-		}
-	} else {
-		switch (id) {
-		case 0x0: return "65-130mA";
-		case 0x1: return "70-140mA";
-		case 0x2: return "80-160mA";
-		case 0x3: return "90-180mA";
-		case 0x4: return "100-200mA";
-		case 0x5: return "120-220mA";
-		case 0x6: return "140-240mA";
-		case 0x7: return "160-260mA";
-		case 0x8: return "180-280mA";
-		case 0x9: return "200-300mA";
-		case 0xa: return "250-350mA";
-		default: return "reserved";
-		}
-	}
-}
-
-char *sleep_consumption(unsigned int id)
-{
-	switch (id) {
-	case 0x00: return "not defined";
-	case 0x01: return "2uA";
-	case 0x02: return "4uA";
-	case 0x03: return "8uA";
-	case 0x04: return "16uA";
-	case 0x05: return "32uA";
-	case 0x06: return "64uA";
-	case 0x07: return "128uA";
-	case 0x08: return "0.256mA";
-	case 0x09: return "0.512mA";
-	case 0x0a: return "1.024mA";
-	case 0x0b: return "2.048mA";
-	case 0x0c: return "4.096mA";
-	case 0x0d: return "8.192mA";
-	default: return "reserved";
-	}
-}
-
-void print_sd_scr(struct config *config, char *scr)
+static void print_sd_scr(struct config *config, char *scr)
 {
 	unsigned int scr_structure;
 	unsigned int sd_spec;
@@ -2203,7 +2083,7 @@ void print_sd_scr(struct config *config, char *scr)
 	}
 }
 
-int process_dir(struct config *config, enum REG_TYPE reg)
+static int process_dir(struct config *config, enum REG_TYPE reg)
 {
 	char *type = NULL;
 	char *reg_content = NULL;

@@ -63,7 +63,7 @@ static inline __u32 per_byte_htole32(__u8 *arr)
 	return arr[0] | arr[1] << 8 | arr[2] << 16 | arr[3] << 24;
 }
 
-int read_extcsd(int fd, __u8 *ext_csd)
+static int read_extcsd(int fd, __u8 *ext_csd)
 {
 	int ret = 0;
 	struct mmc_ioc_cmd idata;
@@ -93,7 +93,8 @@ static void fill_switch_cmd(struct mmc_ioc_cmd *cmd, __u8 index, __u8 value)
 	cmd->flags = MMC_RSP_SPI_R1B | MMC_RSP_R1B | MMC_CMD_AC;
 }
 
-int write_extcsd_value(int fd, __u8 index, __u8 value, unsigned int timeout_ms)
+static int
+write_extcsd_value(int fd, __u8 index, __u8 value, unsigned int timeout_ms)
 {
 	int ret = 0;
 	struct mmc_ioc_cmd idata = {};
@@ -110,7 +111,7 @@ int write_extcsd_value(int fd, __u8 index, __u8 value, unsigned int timeout_ms)
 	return ret;
 }
 
-int send_status(int fd, __u32 *response)
+static int send_status(int fd, __u32 *response)
 {
 	int ret = 0;
 	struct mmc_ioc_cmd idata;
@@ -744,7 +745,7 @@ int do_boot_bus_conditions_set(int nargs, char **argv)
 	return ret;
 }
 
-int do_hwreset(int value, int nargs, char **argv)
+static int do_hwreset(int value, int nargs, char **argv)
 {
 	__u8 ext_csd[512];
 	int fd, ret;
@@ -972,7 +973,7 @@ out_free:
 	return ret;
 }
 
-unsigned int get_sector_count(__u8 *ext_csd)
+static unsigned int get_sector_count(__u8 *ext_csd)
 {
 	return (ext_csd[EXT_CSD_SEC_COUNT_3] << 24) |
 	(ext_csd[EXT_CSD_SEC_COUNT_2] << 16) |
@@ -980,7 +981,7 @@ unsigned int get_sector_count(__u8 *ext_csd)
 	ext_csd[EXT_CSD_SEC_COUNT_0];
 }
 
-int is_blockaddresed(__u8 *ext_csd)
+static int is_blockaddresed(__u8 *ext_csd)
 {
 	unsigned int sectors = get_sector_count(ext_csd);
 
@@ -988,18 +989,19 @@ int is_blockaddresed(__u8 *ext_csd)
 	return (sectors > (2u * 1024 * 1024 * 1024) / 512);
 }
 
-unsigned int get_hc_wp_grp_size(__u8 *ext_csd)
+static unsigned int get_hc_wp_grp_size(__u8 *ext_csd)
 {
 	return ext_csd[221];
 }
 
-unsigned int get_hc_erase_grp_size(__u8 *ext_csd)
+static unsigned int get_hc_erase_grp_size(__u8 *ext_csd)
 {
 	return ext_csd[224];
 }
 
-int set_partitioning_setting_completed(int dry_run, const char * const device,
-		int fd)
+static int
+set_partitioning_setting_completed(int dry_run, const char *const device,
+				   int fd)
 {
 	int ret;
 
@@ -1047,7 +1049,7 @@ int set_partitioning_setting_completed(int dry_run, const char * const device,
 	return 0;
 }
 
-int check_enhanced_area_total_limit(const char * const device, int fd)
+static int check_enhanced_area_total_limit(const char *const device, int fd)
 {
 	__u8 ext_csd[512];
 	__u32 regl;
@@ -2267,7 +2269,7 @@ int do_rpmb_write_key(int nargs, char **argv)
 	return ret;
 }
 
-int rpmb_read_counter(int dev_fd, unsigned int *cnt)
+static int rpmb_read_counter(int dev_fd, unsigned int *cnt)
 {
 	int ret;
 	struct rpmb_frame frame_in = {
@@ -2589,7 +2591,7 @@ int do_rpmb_write_block(int nargs, char **argv)
 	return ret;
 }
 
-int do_cache_ctrl(int value, int nargs, char **argv)
+static int do_cache_ctrl(int value, int nargs, char **argv)
 {
 	__u8 ext_csd[512];
 	int fd, ret;
