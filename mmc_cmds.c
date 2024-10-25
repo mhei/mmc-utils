@@ -59,6 +59,13 @@
 #define WPTYPE_PWRON 2
 #define WPTYPE_PERM 3
 
+
+// Firmware Update (FFU) download modes
+enum ffu_download_mode {
+	FFU_DEFAULT_MODE, // Default mode: Uses CMD23+CMD25; exits FFU mode after each loop.
+	FFU_OPT_MODE1 // Optional mode 1: Uses CMD23+CMD25; but stays in FFU mode during download.
+};
+
 static inline __u32 per_byte_htole32(__u8 *arr)
 {
 	return arr[0] | arr[1] << 8 | arr[2] << 16 | arr[3] << 24;
@@ -2813,23 +2820,40 @@ out:
 
 static void set_ffu_download_cmd(struct mmc_ioc_multi_cmd *multi_cmd,
 			       __u8 *ext_csd, unsigned int bytes, __u8 *buf,
-			       off_t offset)
+			       off_t offset, enum ffu_download_mode ffu_mode)
 {
 	__u32 arg = per_byte_htole32(&ext_csd[EXT_CSD_FFU_ARG_0]);
 
-	/* send block count */
-	set_single_cmd(&multi_cmd->cmds[1], MMC_SET_BLOCK_COUNT, 0, 0,
-		       bytes / 512);
-	multi_cmd->cmds[1].flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_AC;
+	/* prepare multi_cmd for FFU based on cmd to be used */
+	if (ffu_mode == FFU_DEFAULT_MODE) {
+		/* put device into ffu mode */
+		fill_switch_cmd(&multi_cmd->cmds[0], EXT_CSD_MODE_CONFIG, EXT_CSD_FFU_MODE);
+		/* send block count */
+		set_single_cmd(&multi_cmd->cmds[1], MMC_SET_BLOCK_COUNT, 0, 0,
+			       bytes / 512);
+		multi_cmd->cmds[1].flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_AC;
 
-	/*
-	 * send image chunk: blksz and blocks essentially do not matter, as
-	 * long as the product is fw_size, but some hosts don't handle larger
-	 * blksz well.
-	 */
-	set_single_cmd(&multi_cmd->cmds[2], MMC_WRITE_MULTIPLE_BLOCK, 1,
-		       bytes / 512, arg);
-	mmc_ioc_cmd_set_data(multi_cmd->cmds[2], buf + offset);
+		/*
+		 * send image chunk: blksz and blocks essentially do not matter, as
+		 * long as the product is fw_size, but some hosts don't handle larger
+		 * blksz well.
+		 */
+		set_single_cmd(&multi_cmd->cmds[2], MMC_WRITE_MULTIPLE_BLOCK, 1,
+			       bytes / 512, arg);
+		mmc_ioc_cmd_set_data(multi_cmd->cmds[2], buf + offset);
+		/* return device into normal mode */
+		fill_switch_cmd(&multi_cmd->cmds[3], EXT_CSD_MODE_CONFIG, EXT_CSD_NORMAL_MODE);
+	} else if (ffu_mode == FFU_OPT_MODE1) {
+		/*
+		 * FFU mode 2 uses CMD23+CMD25 for repeated downloads and remains in FFU mode
+		 * during FW bundle downloading until completion. In this mode, multi_cmd only
+		 * has 2 sub-commands.
+		 */
+		set_single_cmd(&multi_cmd->cmds[0], MMC_SET_BLOCK_COUNT, 0, 0, bytes / 512);
+		multi_cmd->cmds[0].flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_AC;
+		set_single_cmd(&multi_cmd->cmds[1], MMC_WRITE_MULTIPLE_BLOCK, 1, bytes / 512, arg);
+		mmc_ioc_cmd_set_data(multi_cmd->cmds[1], buf + offset);
+	}
 }
 
 /*
@@ -2873,6 +2897,36 @@ static bool ffu_is_supported(__u8 *ext_csd, char *device)
 	return true;
 }
 
+static int enter_ffu_mode(int dev_fd)
+{
+	int ret;
+	struct mmc_ioc_cmd cmd;
+
+	memset(&cmd, 0, sizeof(cmd));
+
+	fill_switch_cmd(&cmd, EXT_CSD_MODE_CONFIG, EXT_CSD_FFU_MODE);
+	ret = ioctl(dev_fd, MMC_IOC_CMD, &cmd);
+	if (ret)
+		perror("enter FFU mode failed!");
+
+	return ret;
+}
+
+static int exit_ffu_mode(int dev_fd)
+{
+	int ret;
+	struct mmc_ioc_cmd cmd;
+
+	memset(&cmd, 0, sizeof(cmd));
+
+	fill_switch_cmd(&cmd, EXT_CSD_MODE_CONFIG, EXT_CSD_NORMAL_MODE);
+	ret = ioctl(dev_fd, MMC_IOC_CMD, &cmd);
+	if (ret)
+		perror("exit FFU mode failed!");
+
+	return ret;
+}
+
 /*
  * Performs FFU download of the firmware bundle.
  *
@@ -2881,12 +2935,13 @@ static bool ffu_is_supported(__u8 *ext_csd, char *device)
  * @fw_buf:     Pointer to the firmware buffer containing the firmware data to be downloaded.
  * @fw_size:    Size of the firmware in bytes.
  * @chunk_size: Size of the chunks in which the firmware is sent to the device.
+ * @ffu_mode:	FFU mode for firmware download mode
  *
  * Return: If successful, returns the number of sectors programmed.
  *         On failure, returns a negative error number.
  */
 static int do_ffu_download(int dev_fd, __u8 *ext_csd, __u8 *fw_buf, off_t fw_size,
-							unsigned int chunk_size)
+				unsigned int chunk_size, enum ffu_download_mode ffu_mode)
 {
 	int ret;
 	__u8 num_of_cmds = 4;
@@ -2898,6 +2953,10 @@ static int do_ffu_download(int dev_fd, __u8 *ext_csd, __u8 *fw_buf, off_t fw_siz
 		fprintf(stderr, "unexpected NULL pointer\n");
 		return -EINVAL;
 	}
+
+	if (ffu_mode != FFU_DEFAULT_MODE) /* in default mode, mmc_ioc_multi_cmd contains 4 commands */
+		num_of_cmds = 2;
+
 	/* allocate maximum required */
 	multi_cmd = calloc(1, sizeof(struct mmc_ioc_multi_cmd) +
 				num_of_cmds * sizeof(struct mmc_ioc_cmd));
@@ -2906,14 +2965,15 @@ static int do_ffu_download(int dev_fd, __u8 *ext_csd, __u8 *fw_buf, off_t fw_siz
 		return -ENOMEM;
 	}
 
-	/* prepare multi_cmd for FFU based on cmd to be used */
-	/* put device into ffu mode */
-	fill_switch_cmd(&multi_cmd->cmds[0], EXT_CSD_MODE_CONFIG,
-			EXT_CSD_FFU_MODE);
-
-	/* return device into normal mode */
-	fill_switch_cmd(&multi_cmd->cmds[3], EXT_CSD_MODE_CONFIG,
-			EXT_CSD_NORMAL_MODE);
+	if (ffu_mode != FFU_DEFAULT_MODE) {
+		/*
+		 * If the device is not in FFU mode 1, the command to enter FFU mode will be sent
+		 * independently, separate from the firmware bundle download command.
+		 */
+		ret = enter_ffu_mode(dev_fd);
+		if (ret)
+			goto out;
+	}
 
 do_retry:
 	bytes_left = fw_size;
@@ -2924,7 +2984,7 @@ do_retry:
 		bytes_per_loop = bytes_left < chunk_size ? bytes_left : chunk_size;
 
 		/* prepare multi_cmd for FFU based on cmd to be used */
-		set_ffu_download_cmd(multi_cmd, ext_csd, bytes_per_loop, fw_buf, off);
+		set_ffu_download_cmd(multi_cmd, ext_csd, bytes_per_loop, fw_buf, off, ffu_mode);
 
 		/* send ioctl with multi-cmd, download firmware bundle */
 		ret = ioctl(dev_fd, MMC_IOC_MULTI_CMD, multi_cmd);
@@ -2935,7 +2995,7 @@ do_retry:
 			 * In case multi-cmd ioctl failed before exiting from
 			 * ffu mode
 			 */
-			ioctl(dev_fd, MMC_IOC_CMD, &multi_cmd->cmds[3]);
+			exit_ffu_mode(dev_fd);
 			goto out;
 		}
 
@@ -2960,6 +3020,16 @@ do_retry:
 
 		bytes_left -= bytes_per_loop;
 		off += bytes_per_loop;
+	}
+
+	if (ffu_mode != FFU_DEFAULT_MODE) {
+		/*
+		 * If the device is not in FFU mode 1, the command to exit FFU mode will be sent
+		 * independently, separate from the firmware bundle download command.
+		 */
+		ret = exit_ffu_mode(dev_fd);
+		if (ret)
+			goto out;
 	}
 
 	ret = get_ffu_sectors_programmed(dev_fd, ext_csd);
@@ -3009,7 +3079,7 @@ out:
 	return ret;
 }
 
-int do_ffu(int nargs, char **argv)
+static int __do_ffu(int nargs, char **argv, enum ffu_download_mode ffu_mode)
 {
 	int dev_fd, img_fd;
 	int ret = -EINVAL;
@@ -3085,7 +3155,7 @@ int do_ffu(int nargs, char **argv)
 	}
 
 	/* Download firmware bundle */
-	ret = do_ffu_download(dev_fd, ext_csd, fw_buf, fw_size, default_chunk);
+	ret = do_ffu_download(dev_fd, ext_csd, fw_buf, fw_size, default_chunk, ffu_mode);
 	/* Check programmed sectors */
 	if (ret > 0 && (ret * 512) == fw_size) {
 		fprintf(stderr, "Programmed %jd/%jd bytes\n", (intmax_t)fw_size, (intmax_t)fw_size);
@@ -3123,6 +3193,16 @@ out:
 	close(img_fd);
 	close(dev_fd);
 	return ret;
+}
+
+int do_ffu(int nargs, char **argv)
+{
+	return __do_ffu(nargs, argv, FFU_DEFAULT_MODE);
+}
+
+int do_opt_ffu1(int nargs, char **argv)
+{
+	return __do_ffu(nargs, argv, FFU_OPT_MODE1);
 }
 
 int do_general_cmd_read(int nargs, char **argv)

@@ -234,6 +234,11 @@ static struct Command commands[] = {
 		"should be in decimal bytes and sector aligned.\n",
 	  NULL
 	},
+	{ do_opt_ffu1, -2,
+	 "opt_ffu1", "<image name> <device> [chunk-bytes]\n"
+	 "Optional FFU mode 1, it's the same as 'ffu', but uses CMD23+CMD25 for repeated downloads and remains in FFU mode until completion.\n",
+	 NULL
+	},
 	{ do_erase, -4,
 	"erase", "<type> " "<start address> " "<end address> " "<device>\n"
 		"Send Erase CMD38 with specific argument to the <device>\n\n"
