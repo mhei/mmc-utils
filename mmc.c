@@ -244,6 +244,11 @@ static struct Command commands[] = {
 	 "Optional FFU mode 2, uses CMD25+CMD12 Open-ended Multiple-block write to download and remains in FFU mode until completion.\n",
 	 NULL
 	},
+	{ do_opt_ffu3, -2,
+	"opt_ffu3", "<image name> <device> [chunk-bytes]\n"
+	"Optional FFU mode 3, uses CMD24 Single-block write for downloading, exiting FFU mode after each block written.\n",
+	NULL
+	},
 	{ do_erase, -4,
 	"erase", "<type> " "<start address> " "<end address> " "<device>\n"
 		"Send Erase CMD38 with specific argument to the <device>\n\n"
