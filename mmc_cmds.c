@@ -65,7 +65,8 @@ enum ffu_download_mode {
 	FFU_DEFAULT_MODE, // Default mode: Uses CMD23+CMD25; exits FFU mode after each loop.
 	FFU_OPT_MODE1,	// Optional mode 1: Uses CMD23+CMD25; but stays in FFU mode during download.
 	FFU_OPT_MODE2,	// Optional mode 2: Uses CMD25+CMD12 Open-ended Multiple-block write to download
-	FFU_OPT_MODE3	// Optional mode 3: Uses CMD24 Single-block write to download
+	FFU_OPT_MODE3,	// Optional mode 3: Uses CMD24 Single-block write to download
+	FFU_OPT_MODE4	// Optional mode 4: Uses CMD24 Single-block write to download, but stays in FFU mode during download.
 };
 
 static inline __u32 per_byte_htole32(__u8 *arr)
@@ -2866,6 +2867,9 @@ static void set_ffu_download_cmd(struct mmc_ioc_multi_cmd *multi_cmd,
 		set_single_cmd(&multi_cmd->cmds[1], MMC_WRITE_BLOCK, 1, 1, arg);
 		mmc_ioc_cmd_set_data(multi_cmd->cmds[1], buf + offset);
 		fill_switch_cmd(&multi_cmd->cmds[2], EXT_CSD_MODE_CONFIG, EXT_CSD_NORMAL_MODE);
+	} else if (ffu_mode == FFU_OPT_MODE4) {
+		set_single_cmd(&multi_cmd->cmds[0], MMC_WRITE_BLOCK, 1, 1, arg);
+		mmc_ioc_cmd_set_data(multi_cmd->cmds[0], buf + offset);
 	}
 }
 
@@ -2973,6 +2977,9 @@ static int do_ffu_download(int dev_fd, __u8 *ext_csd, __u8 *fw_buf, off_t fw_siz
 	} else if (ffu_mode == FFU_OPT_MODE3) {
 		num_of_cmds = 3; /* in FFU_OPT_MODE3, mmc_ioc_multi_cmd contains 3 commands */
 		chunk_size = 512; /* FFU_OPT_MODE3 uses CMD24 single-block write */
+	} else if (ffu_mode == FFU_OPT_MODE4) {
+		num_of_cmds = 1; /* in FFU_OPT_MODE4, it is single command mode  */
+		chunk_size = 512; /* FFU_OPT_MODE4 uses CMD24 single-block write */
 	}
 
 	/* allocate maximum required */
@@ -2983,10 +2990,11 @@ static int do_ffu_download(int dev_fd, __u8 *ext_csd, __u8 *fw_buf, off_t fw_siz
 		return -ENOMEM;
 	}
 
-	if (ffu_mode == FFU_OPT_MODE1 || ffu_mode == FFU_OPT_MODE2) {
+	if (ffu_mode == FFU_OPT_MODE1 || ffu_mode == FFU_OPT_MODE2 || ffu_mode == FFU_OPT_MODE4) {
 		/*
-		 * In FFU_OPT_MODE1 and FFU_OPT_MODE2, the command to enter FFU mode will be sent
-		 * independently, separate from the firmware bundle download command.
+		 * In FFU_OPT_MODE1, FFU_OPT_MODE2 and FFU_OPT_MODE4, the command to enter FFU
+		 * mode will be sent independently, separate from the firmware bundle download
+		 * command.
 		 */
 		ret = enter_ffu_mode(dev_fd);
 		if (ret)
@@ -3004,11 +3012,14 @@ do_retry:
 		/* prepare multi_cmd for FFU based on cmd to be used */
 		set_ffu_download_cmd(multi_cmd, ext_csd, bytes_per_loop, fw_buf, off, ffu_mode);
 
-		/* send ioctl with multi-cmd, download firmware bundle */
-		ret = ioctl(dev_fd, MMC_IOC_MULTI_CMD, multi_cmd);
+		if (num_of_cmds > 1)
+			/* send ioctl with multi-cmd, download firmware bundle */
+			ret = ioctl(dev_fd, MMC_IOC_MULTI_CMD, multi_cmd);
+		else
+			ret = ioctl(dev_fd, MMC_IOC_CMD, &multi_cmd->cmds[0]);
 
 		if (ret) {
-			perror("Multi-cmd ioctl");
+			perror("ioctl failed");
 			/*
 			 * In case multi-cmd ioctl failed before exiting from
 			 * ffu mode
@@ -3040,10 +3051,10 @@ do_retry:
 		off += bytes_per_loop;
 	}
 
-	if (ffu_mode == FFU_OPT_MODE1 || ffu_mode == FFU_OPT_MODE2) {
+	if (ffu_mode == FFU_OPT_MODE1 || ffu_mode == FFU_OPT_MODE2 || ffu_mode == FFU_OPT_MODE4) {
 		/*
-		 * In FFU_OPT_MODE1 and FFU_OPT_MODE2, the command to exit FFU mode will be sent
-		 * independently, separate from the firmware bundle download command.
+		 * In FFU_OPT_MODE1, FFU_OPT_MODE2 and FFU_OPT_MODE4, the command to exit FFU mode
+		 * will be sent independently, separate from the firmware bundle download command.
 		 */
 		ret = exit_ffu_mode(dev_fd);
 		if (ret)
@@ -3231,6 +3242,11 @@ int do_opt_ffu2(int nargs, char **argv)
 int do_opt_ffu3(int nargs, char **argv)
 {
 	return __do_ffu(nargs, argv, FFU_OPT_MODE3);
+}
+
+int do_opt_ffu4(int nargs, char **argv)
+{
+	return __do_ffu(nargs, argv, FFU_OPT_MODE4);
 }
 
 int do_general_cmd_read(int nargs, char **argv)
