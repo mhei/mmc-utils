@@ -25,9 +25,10 @@ mandir = /usr/share/man
 
 progs = mmc
 
-# make C=1 to enable sparse
+# make C=1 to enable sparse - default
+C ?= 1
 ifdef C
-	check = sparse $(CHECKFLAGS)
+	check = sparse $(CHECKFLAGS) $(AM_CFLAGS)
 endif
 
 all: $(progs)
@@ -47,12 +48,18 @@ manpages:
 clean:
 	rm -f $(progs) $(objects)
 	$(MAKE) -C man clean
+	$(MAKE) -C docs clean
 
 install: $(progs)
 	$(INSTALL) -m755 -d $(DESTDIR)$(bindir)
 	$(INSTALL) $(progs) $(DESTDIR)$(bindir)
+	$(INSTALL) -m755 -d $(DESTDIR)$(mandir)/man1
 	$(INSTALL) -m 644 mmc.1 $(DESTDIR)$(mandir)/man1
 
 -include $(foreach obj,$(objects), $(dir $(obj))/.$(notdir $(obj)).d)
 
 .PHONY: all clean install manpages install-man
+
+# Add this new target for building HTML documentation using docs/Makefile
+html-docs:
+	$(MAKE) -C docs html

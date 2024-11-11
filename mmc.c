@@ -234,6 +234,26 @@ static struct Command commands[] = {
 		"should be in decimal bytes and sector aligned.\n",
 	  NULL
 	},
+	{ do_opt_ffu1, -2,
+	 "opt_ffu1", "<image name> <device> [chunk-bytes]\n"
+	 "Optional FFU mode 1, it's the same as 'ffu', but uses CMD23+CMD25 for repeated downloads and remains in FFU mode until completion.\n",
+	 NULL
+	},
+	{ do_opt_ffu2, -2,
+	 "opt_ffu2", "<image name> <device> [chunk-bytes]\n"
+	 "Optional FFU mode 2, uses CMD25+CMD12 Open-ended Multiple-block write to download and remains in FFU mode until completion.\n",
+	 NULL
+	},
+	{ do_opt_ffu3, -2,
+	"opt_ffu3", "<image name> <device> [chunk-bytes]\n"
+	"Optional FFU mode 3, uses CMD24 Single-block write for downloading, exiting FFU mode after each block written.\n",
+	NULL
+	},
+	{ do_opt_ffu4, -2,
+	 "opt_ffu4", "<image name> <device> [chunk-bytes]\n"
+	 "Optional FFU mode 4, uses CMD24 Single-block write for repeated downloads, remaining in FFU mode until completion.\n",
+	 NULL
+	},
 	{ do_erase, -4,
 	"erase", "<type> " "<start address> " "<end address> " "<device>\n"
 		"Send Erase CMD38 with specific argument to the <device>\n\n"
@@ -272,7 +292,7 @@ static struct Command commands[] = {
 	  "4. The MMC will perform a soft reset, if your system cannot handle that do not use the boot operation from mmc-utils.\n",
 	  NULL
 	},
-	{ 0, 0, 0, 0 }
+	{ NULL, 0, NULL, NULL }
 };
 
 static char *get_prgname(char *programname)
@@ -324,10 +344,10 @@ static void help(char *np)
 
 static int split_command(char *cmd, char ***commands)
 {
-	int	c, l;
-	char	*p, *s;
+	int c, l;
+	char *p, *s;
 
-	for( *commands = 0, l = c = 0, p = s = cmd ; ; p++, l++ ){
+	for (*commands = NULL, l = c = 0, p = s = cmd ; ; p++, l++) {
 		if ( *p && *p != ' ' )
 			continue;
 
@@ -340,7 +360,7 @@ static int split_command(char *cmd, char ***commands)
 		if( !*p ) break;
 	}
 
-	(*commands)[c] = 0;
+	(*commands)[c] = NULL;
 	return c;
 }
 
@@ -444,7 +464,7 @@ static int parse_args(int argc, char **argv,
 		      int *nargs_, char **cmd_, char ***args_ )
 {
 	struct Command	*cp;
-	struct Command	*matchcmd=0;
+	struct Command	*matchcmd = NULL;
 	char		*prgname = get_prgname(argv[0]);
 	int		i=0, helprequested=0;
 
@@ -535,9 +555,9 @@ static int parse_args(int argc, char **argv,
 }
 int main(int ac, char **av )
 {
-	char		*cmd=0, **args=0;
-	int		nargs=0, r;
-	CommandFunction func=0;
+	char *cmd = NULL, **args = NULL;
+	int nargs = 0, r;
+	CommandFunction func = NULL;
 
 	r = parse_args(ac, av, &func, &nargs, &cmd, &args);
 	if( r <= 0 ){
