@@ -35,7 +35,20 @@ Running mmc-utils
         Print SCR data from <device path>. The device path should specify the scr file directory.
 
     ``ffu <image name> <device> [chunk-bytes]``
-        Run Field Firmware Update with <image name> on <device>. [chunk-bytes] is optional and defaults to its max - 512k. Should be in decimal bytes and sector aligned.
+      Default mode.  Run Field Firmware Update with `<image name>` on `<device>`. `[chunk-bytes]` is optional and defaults to its max - 512k. Should be in decimal bytes and sector aligned.
+
+    ``opt_ffu1 <image name> <device> [chunk-bytes]``
+      Optional FFU mode 1, it's the same as 'ffu', but uses CMD23+CMD25 for repeated downloads and remains in FFU mode until completion.
+
+    ``opt_ffu2 <image name> <device> [chunk-bytes]``
+      Optional FFU mode 2, uses CMD25+CMD12 Open-ended Multiple-block write to download and remains in FFU mode until completion.
+
+    ``opt_ffu3 <image name> <device> [chunk-bytes]``
+      Optional FFU mode 3, uses CMD24 Single-block write for downloading, exiting FFU mode after each block written.
+
+    ``opt_ffu4 <image name> <device> [chunk-bytes]``
+      Optional FFU mode 4, uses CMD24 Single-block write for repeated downloads, remaining in FFU mode until completion.
+
 
     ``erase <type> <start address> <end address> <device>``
         Send Erase CMD38 with specific argument to the <device>. NOTE!: This will delete all user data in the specified region of the device. <type> must be one of: legacy, discard, secure-erase, secure-trim1, secure-trim2, or trim.
