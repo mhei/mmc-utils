@@ -11,7 +11,7 @@ Source
 
 mmc-utils resides in a git repo, the canonical place is:
 
-https://git.kernel.org/pub/scm/linux/kernel/git/ulfh/mmc-utils.git
+https://git.kernel.org/pub/scm/utils/mmc/mmc-utils.git
 
 
 Mailing list
