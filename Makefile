@@ -27,14 +27,14 @@ progs = mmc
 
 # make C=1 to enable sparse - default
 C ?= 1
-ifdef C
+ifeq "$(C)" "1"
 	check = sparse $(CHECKFLAGS) $(AM_CFLAGS)
 endif
 
 all: $(progs)
 
 .c.o:
-ifdef C
+ifeq "$(C)" "1"
 	$(check) $<
 endif
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
