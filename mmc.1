@@ -27,6 +27,9 @@ If \fInumber\fR is passed (0 or 1), only protect that specified eMMC boot partit
 .br
 It will be write-protected until the next boot.
 .TP
+.BI writeprotect " " user " " get " " \fIdevice\fR
+Print the user areas write protect configuration for <device>.
+.TP
 .BI writeprotect " " user " " set " " \fItype\fR " " \fIstart\-block\fR " " \fIblocks\fR " " \fIdevice\fR
 Set the write protect configuration for the specified region of the user area for the device.
 .br

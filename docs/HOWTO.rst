@@ -28,6 +28,9 @@ Running mmc-utils
         If <number> is passed (0 or 1), only protect that particular eMMC boot partition, otherwise protect both. It will be write-protected until the next boot.
         -p  Protect partition permanently instead. NOTE! -p is a one-time programmable (unreversible) change.
 
+    ``writeprotect user get <device>``
+        Print the user areas write protect configuration for <device>.
+
     ``writeprotect user set <type> <start block> <blocks> <device>``
         Set user area write protection.
 
