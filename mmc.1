@@ -176,17 +176,29 @@ Disable the eMMC cache feature on the device.
 .br
 NOTE! The cache is an optional feature on devices >= eMMC4.5.
 .TP
-.BI csd " " read " " \fidevice\-path\fR
+.BI csd " " read " " \fR[-h] \fR[-v] " " \fR[-b " " \fIbus_type\fR] " "  \fR[-r " " \fIregister\fR] " " \fI<device\-path>\fR
 Print CSD data from \fIdevice\-path\fR.
 The device path should specify the csd sysfs file directory.
+.br
+If \fIbus_type\fR is passed (mmc or sd), the \fIregister\fR content must be passed as well, and no need for device path.
+.br
+It is useful for cases where we are getting the register value without having the actual platform.
 .TP
-.BI cid " " read " " \fIdevice\-path\fR
+.BI cid " " read " " \fR[-h] \fR[-v] " " \fR[-b " " \fIbus_type\fR] " "  \fR[-r " " \fIregister\fR] " " \fI<device\-path>\fR
 Print CID data from \fIdevice\-path\fR.
 The device path should specify the cid sysfs file directory.
+.br
+If \fIbus_type\fR is passed (mmc or sd), the \fIregister\fR content must be passed as well, and no need for device path.
+.br
+It is useful for cases where we are getting the register value without having the actual platform.
 .TP
-.BI scr " " read " " \fIdevice\-path\fR
+.BI scr " " read " " \fR[-h] \fR[-v] " " \fR[-b " " \fIbus_type\fR] " "  \fR[-r " " \fIregister\fR] " " \fI<device\-path>\fR
 Print SCR data from \fIdevice\-path\fR.
 The device path should specify the scr sysfs file directory.
+.br
+If \fIbus_type\fR is passed (mmc or sd), the \fIregister\fR content must be passed as well, and no need for device path.
+.br
+It is useful for cases where we are getting the register value without having the actual platform.
 .TP
 .BI ffu " " \fIimage\-file\-name\fR " " \fIdevice\fR " " [\fIchunk\-bytes\fR]
 Run Field Firmware Update with \fIimage\-file\-name\fR on the device.
