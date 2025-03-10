@@ -2146,15 +2146,16 @@ static int process_dir(struct config *config, enum REG_TYPE reg)
 
 		break;
 	case SCR:
-		if (!strcmp(type, "SD")) {
-			reg_content = read_file("scr");
-			if (!reg_content) {
-				fprintf(stderr, "Could not read SD card "
-					"configuration in directory '%s'.\n",
-					config->dir);
-				ret = -1;
-				goto err;
-			}
+		if (config->bus != SD)
+			break;
+
+		reg_content = read_file("scr");
+		if (!reg_content) {
+			fprintf(stderr, "Could not read SD card "
+				"configuration in directory '%s'.\n",
+				config->dir);
+			ret = -1;
+			goto err;
 		}
 
 		print_sd_scr(config, reg_content);
