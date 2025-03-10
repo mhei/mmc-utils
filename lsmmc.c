@@ -62,16 +62,11 @@ enum bus_type {
 };
 
 struct config {
-	char *idsfile;
 	char *dir;
 	bool verbose;
 
 	enum bus_type bus;
-	char *type;
-	char *cid;
-	char *csd;
-	char *scr;
-	char *ext_csd;
+	char *reg;
 };
 
 enum REG_TYPE {
@@ -234,24 +229,53 @@ static struct ids_database mmc_database[] = {
 /* Command line parsing functions */
 static void usage(char *progname)
 {
-	printf("Usage: %s [-h] [-v] <device path ...>\n", progname);
+	printf("Usage: %s [-h] [-v] [-b bus_type] [-r register] <device path ...>\n", progname);
 	printf("\n");
 	printf("Options:\n");
+	printf("\t-b\t bus type. Either sd or mmc. if specified, register value must be given.\n");
+	printf("\t-r\t The register content. if specified no need for device path\n");
 	printf("\t-h\tShow this help.\n");
 	printf("\t-v\tEnable verbose mode.\n");
+}
+
+static void to_lowercase(char *str)
+{
+	for (; *str; ++str)
+		*str = tolower((unsigned char)*str);
 }
 
 static int parse_opts(int argc, char **argv, struct config *config)
 {
 	int c;
+	bool bus_given = false;
+	bool reg_given = false;
 
-	while ((c = getopt(argc, argv, "hv")) != -1) {
+	while ((c = getopt(argc, argv, "hvb:r:")) != -1) {
 		switch (c) {
 		case 'h':
 			usage(argv[0]);
 			return -1;
 		case 'v':
 			config->verbose = true;
+			break;
+		case 'b':
+			to_lowercase(optarg);
+			if (strcmp(optarg, "mmc") == 0) {
+				config->bus = MMC;
+			} else if (strcmp(optarg, "sd") == 0) {
+				config->bus = SD;
+			} else {
+				fprintf(stderr, "Unknown bus type '%s'.\n\n", optarg);
+				usage(argv[0]);
+				return -1;
+			}
+			bus_given = true;
+
+			break;
+		case 'r':
+			config->reg = strdup(optarg);
+			reg_given = true;
+
 			break;
 		case '?':
 			fprintf(stderr,
@@ -270,13 +294,27 @@ static int parse_opts(int argc, char **argv, struct config *config)
 		}
 	}
 
-	if (optind >= argc) {
-		fprintf(stderr, "Expected mmc directory arguments.\n\n");
+	if (bus_given != reg_given) {
+		fprintf(stderr, "Both bus type and register must be provided together.\n\n");
 		usage(argv[0]);
 		return -1;
 	}
 
-	config->dir = strdup(argv[optind]);
+	if (reg_given) {
+		if (optind < argc) {
+			fprintf(stderr, "Either register or directory, not both.\n\n");
+			usage(argv[0]);
+			return -1;
+		}
+	} else {
+		if (optind >= argc) {
+			fprintf(stderr, "Expected mmc directory arguments.\n\n");
+			usage(argv[0]);
+			return -1;
+		}
+
+		config->dir = strdup(argv[optind]);
+	}
 
 	return 0;
 }
@@ -2222,13 +2260,14 @@ static int do_read_reg(int argc, char **argv, enum REG_TYPE reg)
 	if (ret)
 		return ret;
 
-	if (cfg.dir)
+	if (cfg.dir) {
 		ret = process_dir(&cfg, reg);
-
-	free(cfg.dir);
+		free(cfg.dir);
+	} else if (cfg.reg) {
+		ret = process_reg(&cfg, cfg.reg, reg);
+	}
 
 	return ret;
-
 }
 
 int do_read_csd(int argc, char **argv)
