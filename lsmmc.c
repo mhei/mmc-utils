@@ -2192,30 +2192,15 @@ static int do_read_reg(int argc, char **argv, enum REG_TYPE reg)
 
 int do_read_csd(int argc, char **argv)
 {
-	if (argc != 2 && argc != 3) {
-		fprintf(stderr, "Usage: Print CSD data from <device path>.\n");
-		exit(1);
-	}
-
 	return do_read_reg(argc, argv, CSD);
 }
 
 int do_read_cid(int argc, char **argv)
 {
-	if (argc != 2 && argc != 3) {
-		fprintf(stderr, "Usage: Print CID data from <device path>.\n");
-		exit(1);
-	}
-
 	return do_read_reg(argc, argv, CID);
 }
 
 int do_read_scr(int argc, char **argv)
 {
-	if (argc != 2 && argc != 3) {
-		fprintf(stderr, "Usage: Print SCR data from <device path>.\n");
-		exit(1);
-	}
-
 	return do_read_reg(argc, argv, SCR);
 }
