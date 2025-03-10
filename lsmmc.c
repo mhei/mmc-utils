@@ -232,9 +232,9 @@ static struct ids_database mmc_database[] = {
 };
 
 /* Command line parsing functions */
-static void usage(void)
+static void usage(char *progname)
 {
-	printf("Usage: print mmc [-h] [-v] <device path ...>\n");
+	printf("Usage: %s [-h] [-v] <device path ...>\n", progname);
 	printf("\n");
 	printf("Options:\n");
 	printf("\t-h\tShow this help.\n");
@@ -248,7 +248,7 @@ static int parse_opts(int argc, char **argv, struct config *config)
 	while ((c = getopt(argc, argv, "hv")) != -1) {
 		switch (c) {
 		case 'h':
-			usage();
+			usage(argv[0]);
 			return -1;
 		case 'v':
 			config->verbose = true;
@@ -256,12 +256,12 @@ static int parse_opts(int argc, char **argv, struct config *config)
 		case '?':
 			fprintf(stderr,
 				"Unknown option '%c' encountered.\n\n", c);
-			usage();
+			usage(argv[0]);
 			return -1;
 		case ':':
 			fprintf(stderr,
 				"Argument for option '%c' missing.\n\n", c);
-			usage();
+			usage(argv[0]);
 			return -1;
 		default:
 			fprintf(stderr,
@@ -272,11 +272,12 @@ static int parse_opts(int argc, char **argv, struct config *config)
 
 	if (optind >= argc) {
 		fprintf(stderr, "Expected mmc directory arguments.\n\n");
-		usage();
+		usage(argv[0]);
 		return -1;
 	}
 
 	config->dir = strdup(argv[optind]);
+
 	return 0;
 }
 
