@@ -34,8 +34,14 @@ Running mmc-utils
     ``writeprotect user set <type> <start block> <blocks> <device>``
         Set user area write protection.
 
+    ``csd read <device path>``
+        Print CSD data from <device path>. The device path should specify the csd sysfs file directory.
+
+    ``cid read <device path>``
+        Print CID data from <device path>. The device path should specify the cid sysfs file directory.
+
     ``scr read <device path>``
-        Print SCR data from <device path>. The device path should specify the scr file directory.
+        Print SCR data from <device path>. The device path should specify the scr sysfs file directory.
 
     ``ffu <image name> <device> [chunk-bytes]``
       Default mode.  Run Field Firmware Update with `<image name>` on `<device>`. `[chunk-bytes]` is optional and defaults to its max - 512k. Should be in decimal bytes and sector aligned.
