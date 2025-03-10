@@ -2084,10 +2084,102 @@ static void print_sd_scr(struct config *config, char *scr)
 	}
 }
 
+static int process_reg(struct config *config, char *reg_content, enum REG_TYPE reg)
+{
+	int ret = 0;
+
+	switch (reg) {
+	case CID:
+		if (!reg_content) {
+			fprintf(stderr,
+				"Could not read card identity in directory '%s'.\n",
+				config->dir);
+			ret = -1;
+			goto err;
+		}
+
+		if (config->bus == SD)
+			print_sd_cid(config, reg_content);
+		else
+			print_mmc_cid(config, reg_content);
+
+		break;
+	case CSD:
+		if (!reg_content) {
+			fprintf(stderr,
+				"Could not read card specific data in "
+				"directory '%s'.\n", config->dir);
+			ret = -1;
+			goto err;
+		}
+
+		if (config->bus == SD)
+			print_sd_csd(config, reg_content);
+		else
+			print_mmc_csd(config, reg_content);
+
+		break;
+	case SCR:
+		if (config->bus != SD)
+			break;
+
+		if (!reg_content) {
+			fprintf(stderr, "Could not read SD card "
+				"configuration in directory '%s'.\n",
+				config->dir);
+			ret = -1;
+			goto err;
+		}
+
+		print_sd_scr(config, reg_content);
+
+		break;
+	default:
+		goto err;
+	}
+
+err:
+
+	return ret;
+}
+
+static int process_reg_from_file(struct config *config, enum REG_TYPE reg)
+{
+	char *reg_content = NULL;
+	int ret = 0;
+
+	switch (reg) {
+	case CID:
+		reg_content = read_file("cid");
+		ret = process_reg(config, reg_content, CID);
+
+		break;
+	case CSD:
+		reg_content = read_file("csd");
+		ret = process_reg(config, reg_content, CSD);
+
+		break;
+	case SCR:
+		if (config->bus != SD)
+			break;
+
+		reg_content = read_file("scr");
+		ret = process_reg(config, reg_content, SCR);
+
+		break;
+	default:
+		goto err;
+	}
+
+err:
+	free(reg_content);
+
+	return ret;
+}
+
 static int process_dir(struct config *config, enum REG_TYPE reg)
 {
 	char *type = NULL;
-	char *reg_content = NULL;
 	int ret = 0;
 
 	if (chdir(config->dir) < 0) {
@@ -2113,61 +2205,9 @@ static int process_dir(struct config *config, enum REG_TYPE reg)
 
 	config->bus = strcmp(type, "MMC") ? SD : MMC;
 
-	switch (reg) {
-	case CID:
-		reg_content = read_file("cid");
-		if (!reg_content) {
-			fprintf(stderr,
-				"Could not read card identity in directory '%s'.\n",
-				config->dir);
-			ret = -1;
-			goto err;
-		}
-
-		if (config->bus == SD)
-			print_sd_cid(config, reg_content);
-		else
-			print_mmc_cid(config, reg_content);
-
-		break;
-	case CSD:
-		reg_content = read_file("csd");
-		if (!reg_content) {
-			fprintf(stderr,
-				"Could not read card specific data in "
-				"directory '%s'.\n", config->dir);
-			ret = -1;
-			goto err;
-		}
-
-		if (config->bus == SD)
-			print_sd_csd(config, reg_content);
-		else
-			print_mmc_csd(config, reg_content);
-
-		break;
-	case SCR:
-		if (config->bus != SD)
-			break;
-
-		reg_content = read_file("scr");
-		if (!reg_content) {
-			fprintf(stderr, "Could not read SD card "
-				"configuration in directory '%s'.\n",
-				config->dir);
-			ret = -1;
-			goto err;
-		}
-
-		print_sd_scr(config, reg_content);
-
-		break;
-	default:
-		goto err;
-	}
+	ret = process_reg_from_file(config, reg);
 
 err:
-	free(reg_content);
 	free(type);
 
 	return ret;
